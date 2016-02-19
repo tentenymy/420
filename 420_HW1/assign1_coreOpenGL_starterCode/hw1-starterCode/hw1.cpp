@@ -7,6 +7,7 @@
 */
 
 #include <iostream>
+#include <vector>
 #include <cstring>
 #include "openGLHeader.h"
 #include "glutHeader.h"
@@ -50,18 +51,42 @@ char windowTitle[512] = "CSCI 420 homework I";
 
 ImageIO * heightmapImage;
 
-// Set parameters
+//////////////////////////////////////////////////
+///////////////// Set parameters /////////////////
+//////////////////////////////////////////////////
 BasicPipelineProgram *pipelineProgram;
 OpenGLMatrix *matrix;
 GLuint VertexArrayID;
 GLuint programID;
 GLuint vertexbuffer;
+GLuint colorbuffer;
 
-// Set data
-float positions[4][3] = {{-1.0, -1.0, -1.0}, {1.0, -1.0, -1.0}, {-1.0, 1.0, -1.0}, {1.0, 1.0, -1.0}};
-float colors[4][4] = {{0.0, 0.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}};
-GLfloat theta[3] = {0.0, 0.0, 0.0};
+GLfloat positions[768*768*6*3];
+GLsizei numVertices = 0;
+GLsizei sizePosition = 0;
 
+const int POINTS = 0;
+const int LINES = 1;
+const int TRIANGLES = 2;
+int renderMode = 0;
+
+float m[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+float p[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+GLfloat colors[] = { 
+    1.0f,  1.0f,  1.0f, 1.0f, 
+    1.0f,  1.0f,  1.0f, 1.0f,
+    1.0f,  1.0f,  1.0f, 1.0f,
+    1.0f,  0.0f,  0.0f, 1.0f,
+    1.0f,  0.0f,  0.0f, 1.0f,
+    1.0f,  0.0f,  0.0f, 1.0f,
+    0.0f,  1.0f,  0.0f, 1.0f,
+    0.0f,  1.0f,  0.0f, 1.0f,
+    0.0f,  1.0f,  0.0f, 1.0f,
+    0.0f,  0.0f,  1.0f, 1.0f,
+    0.0f,  0.0f,  1.0f, 1.0f,
+    0.0f,  0.0f,  1.0f, 1.0f,
+  };
 
 // write a screenshot to the specified filename
 void saveScreenshot(const char * filename)
@@ -80,70 +105,87 @@ void saveScreenshot(const char * filename)
 
 void displayFunc()
 {
-  // render some stuff...
+  // 1. Clear the display
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // 2. Set matrix
+  matrix->SetMatrixMode(OpenGLMatrix::ModelView); 
   matrix->LoadIdentity();
-  matrix->LookAt(0, 0, 0, 0, 0, -1, 0, 1, 0); // default camera 
+  matrix->LookAt(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 0.0f); // default camera 
   matrix->Rotate(landRotate[0], 1.0, 0.0, 0.0); 
   matrix->Rotate(landRotate[1], 0.0, 1.0, 0.0); 
   matrix->Rotate(landRotate[2], 0.0, 0.0, 1.0);
   matrix->Translate(landTranslate[0], landTranslate[1], landTranslate[2]); 
   matrix->Scale(landScale[0], landScale[1], landScale[2]);
 
-
-  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer); 
+  // 3. Bind VAO and VBO, set data to VBO
+  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
   GLuint loc = glGetAttribLocation(programID, "position"); 
   glEnableVertexAttribArray(loc);
   const void * offset = (const void*) 0;
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, offset);
 
-  GLuint loc2 = glGetAttribLocation(programID, "color"); 
+  /*GLuint loc2 = glGetAttribLocation(programID, "color"); 
   glEnableVertexAttribArray(loc2);
-  const void * offset2 = (const void*) sizeof(positions); 
-  glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, 0, offset2);
+  offset = (const void*) sizePosition; 
+  glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, 0, offset);*/
 
-
-  // Send our transformation to the currently bound shader, 
+  // 4. Set transformation to matrix
   GLint h_modelViewMatrix = glGetUniformLocation(programID, "modelViewMatrix");
-  float m[16]; 
   matrix->GetMatrix(m);
   glUniformMatrix4fv(h_modelViewMatrix, 1, GL_FALSE, m);
-
   GLint h_projectionMatrix = glGetUniformLocation(programID, "projectionMatrix");
-  float p[16]; 
   matrix->GetMatrix(p);
   glUniformMatrix4fv(h_projectionMatrix, 1, GL_FALSE, p);
 
-  // 1rst attribute buffer : vertices
-  glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
-
-  // Draw the triangle !
+  // 5. Draw the triangle
   GLint first = 0;
-  GLsizei count = 4; 
-  glDrawArrays(GL_TRIANGLE_STRIP, first, count);
-  glDisableVertexAttribArray(0);
+  GLsizei count = numVertices; 
+  switch (renderMode) {
+    case POINTS:
+      glDrawArrays(GL_POINTS, first, count);
+      break;
+    case LINES:
+      glDrawArrays(GL_LINES_ADJACENCY, first, count);
+      break;
+    default:
+      glDrawArrays(GL_TRIANGLES, first, count);
+  }
+ 
+  //glDisableVertexAttribArray(loc2);
   glutSwapBuffers();
 }
 
 void idleFunc()
 {
   // do some stuff... 
-
+  /*
+  char * fName = new char[99];
+  itoa(currentFrame, fName, 10);
+  fName = strcat(fName, ".jpg");
+  saveScreenshot(fName);
+  free(fName);
+  currentFrame++;
+  */
   // for example, here, you can save the screenshots to disk (to make the animation)
   // make the screen update 
+  GLfloat delta = 1.0; 
+  GLint axis = 1; 
+  landRotate[axis] += delta;
+  if (landRotate[axis] > 360.0)
+    landRotate[axis] -= 360.0;
   glutPostRedisplay(); 
 }
 
 void reshapeFunc(int w, int h)
 {
   GLfloat aspect = (GLfloat) w / (GLfloat) h; 
-  glViewport(0, 0, w, h); 
+  glViewport(0, -280, 1280, 1280); 
   matrix->SetMatrixMode(OpenGLMatrix::Projection); 
   matrix->LoadIdentity();
-  matrix->Ortho(-2.0, 2.0, -2.0/aspect, 2.0/aspect, 0.0, 10.0);
+  matrix->Perspective(60.0f, w / h, 0.1f, 100.0f);
   matrix->SetMatrixMode(OpenGLMatrix::ModelView); 
+  matrix->LoadIdentity();
 }
 
 void mouseMotionDragFunc(int x, int y)
@@ -275,44 +317,126 @@ void keyboardFunc(unsigned char key, int x, int y)
   }
 }
 
+void RenderMode(int mode) {
+  int imageHeight = heightmapImage->getHeight();
+  int imageWidth = heightmapImage->getWidth();
+  int imageByte = heightmapImage->getBytesPerPixel();
+  cout << "Image height: " << imageHeight << " width: " << imageWidth << " byte: " << imageByte << endl;
+
+  if (mode == TRIANGLES) {
+    cout << "Render type: TRIANGLES" << endl;
+    numVertices = (imageHeight - 1) * (imageWidth - 1) * 6;
+    sizePosition = numVertices * 3 * 4;
+    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
+
+    int count = 0;
+    float scale_XY = 1.0f / imageHeight;
+    float scale_Z = 0.2f / 255.0f;
+    for (int i = 0; i < imageHeight - 1; ++i) {
+      for (int j = 0; j < imageWidth - 1; ++j) {
+        positions[count++] = i * scale_XY - 0.5;
+        positions[count++] = j * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i, j, 0) * scale_Z;
+
+        positions[count++] = (i + 1) * scale_XY - 0.5;
+        positions[count++] = j * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i + 1, j, 0) * scale_Z;
+
+        positions[count++] = i * scale_XY - 0.5;
+        positions[count++] = (j + 1) * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i, j + 1, 0) * scale_Z;
+
+        positions[count++] = (i + 1) * scale_XY - 0.5;
+        positions[count++] = j * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i + 1, j, 0) * scale_Z;
+
+        positions[count++] = i * scale_XY - 0.5;
+        positions[count++] = (j + 1) * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i, j + 1, 0) * scale_Z;
+
+        positions[count++] = (i + 1) * scale_XY - 0.5;
+        positions[count++] = (j + 1) * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i + 1, j + 1, 0) * scale_Z;
+      }
+    }
+  } else if (mode == POINTS || mode == LINES) {
+    cout << "Render type: TRIANGLES" << endl;
+    numVertices = imageHeight * imageWidth;
+    sizePosition = numVertices * 3 * 4;
+    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
+
+    int count = 0;
+    float scale_XY = 1.0 / 255.0f;
+    float scale_Z = scale_XY * 0.2;
+    for (int i = 0; i < imageHeight; ++i) {
+      for (int j = 0; j < imageWidth; ++j) {
+        positions[count++] = i * scale_XY - 0.5;
+        positions[count++] = j * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i, j, 0) * scale_Z;
+      }
+    }
+  } else {
+    cout << "Render type: TRIANGLES" << endl;
+    numVertices = imageHeight * imageWidth;
+    sizePosition = numVertices * 3 * 4;
+    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
+
+    int count = 0;
+    float scale_XY = 1.0 / 255.0f;
+    float scale_Z = scale_XY * 0.2;
+    for (int i = 0; i < imageHeight; ++i) {
+      for (int j = 0; j < imageWidth; ++j) {
+        positions[count++] = i * scale_XY - 0.5;
+        positions[count++] = j * scale_XY - 0.5;
+        positions[count++] = heightmapImage->getPixel(i, j, 0) * scale_Z;
+      }
+    }
+  }
+
+
+
+
+
+
+}
+
 void initScene(int argc, char *argv[])
 {
-  // load the image from a jpeg disk file to main memory
+  // 1. Load the image from a jpeg disk file to main memory
   heightmapImage = new ImageIO();
   if (heightmapImage->loadJPEG(argv[1]) != ImageIO::OK)
   {
     cout << "Error reading image " << argv[1] << "." << endl;
     exit(EXIT_FAILURE);
   }
+  renderMode = LINES;
+  RenderMode (renderMode);
+  
 
-   // Dark blue background
+  // 2. Clear and set scene
   glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
   glEnable(GL_DEPTH_TEST);
 
-
+  // 3. Initialize VAO
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
 
+  // 4. Initialize VBO
+  glGenBuffers(1, &vertexbuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer); 
+  glBufferData(GL_ARRAY_BUFFER, sizePosition, NULL, GL_STATIC_DRAW); 
+  //glBufferData(GL_ARRAY_BUFFER, sizePosition + sizeColor, NULL, GL_STATIC_DRAW); 
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizePosition, &positions[0]);
+  //glBufferSubData(GL_ARRAY_BUFFER, sizePosition, sizeColor, colors); 
 
+  // 5. Initialize matrix
+  matrix = new OpenGLMatrix();
 
-  // Create and compile our GLSL program from the shaders
+  // 6. Bind pipeline shader
   pipelineProgram = new BasicPipelineProgram();
   pipelineProgram->Init("../openGLHelper-starterCode");
   pipelineProgram->Bind();
   programID = pipelineProgram->GetProgramHandle();
-
-
-
-  // Get a handle for our "MVP" uniform
-  matrix = new OpenGLMatrix();
-
-
-  glGenBuffers(1, &vertexbuffer);
-  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer); 
-  glBufferData(GL_ARRAY_BUFFER, sizeof(positions) + sizeof(colors), NULL, GL_STATIC_DRAW); 
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(positions), positions);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(positions), sizeof(colors), colors); 
-
 }
 
 int main(int argc, char *argv[])
