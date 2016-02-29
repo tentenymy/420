@@ -2,8 +2,9 @@
   CSCI 420 Computer Graphics, USC
   Assignment 1: Height Fields
   C++ starter code
-
-  Student username: <type your USC username here>
+  
+  Student username: meiyiyan@usc.edu
+  Name: Meiyi Yang
 */
 
 #include <iostream>
@@ -32,6 +33,34 @@
 
 using namespace std;
 
+/////////////////////////////////////////////
+///////////////// Set Cases /////////////////
+/////////////////////////////////////////////
+/* Case1: Render grayscale image by trianlge, colored in gradient color */
+int renderMode = 2; // 0: Points; 1: Lines; 2: Triangle
+int colorMode = 0; // 0: graident color; 1: own image color; 2: texture color
+int saveMode = 0; // 0: no save; 1: save screen shot
+// Set basic.vertexShader.glsl: mode = 0
+
+
+/* Case2: Render colorful image by trianlge */
+/*
+int renderMode = 2; // 0: Points; 1: Lines; 2: Triangle
+int colorMode = 1; // 0: graident color; 1: own image color; 2: texture color
+int saveMode = 0; // 0: no save; 1: save screen shot
+// Set basic.vertexShader.glsl: mode = 1
+*/
+
+/* Case3: Render grayscale image by trianlge, colored by the same size colorful image (Save screen shot)*/
+/*
+int renderMode = 2; // 0: Points; 1: Lines; 2: Triangle
+int colorMode = 2; // 0: graident color; 1: own image color; 2: texture color
+int saveMode = 0; // 0: no save; 1: save screen shot
+// Set basic.vertexShader.glsl: mode = 1
+*/
+
+
+
 int mousePos[2]; // x,y coordinate of the mouse position
 int leftMouseButton = 0; // 1 if pressed, 0 if not 
 int middleMouseButton = 0; // 1 if pressed, 0 if not
@@ -49,11 +78,7 @@ int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
 
-ImageIO * heightmapImage;
 
-//////////////////////////////////////////////////
-///////////////// Set parameters /////////////////
-//////////////////////////////////////////////////
 BasicPipelineProgram *pipelineProgram;
 OpenGLMatrix *matrix;
 GLuint VertexArrayID;
@@ -61,32 +86,23 @@ GLuint programID;
 GLuint vertexbuffer;
 GLuint colorbuffer;
 
+ImageIO * heightmapImage;
+ImageIO * colorImage;
+
 GLfloat positions[768*768*6*3];
+GLfloat colors[768*768*6*3];
 GLsizei numVertices = 0;
 GLsizei sizePosition = 0;
+GLsizei sizeColor = 0;
+
+char a1 = '0', a2 = '0', a3 = '0';
 
 const int POINTS = 0;
 const int LINES = 1;
 const int TRIANGLES = 2;
-int renderMode = 0;
 
 float m[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 float p[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-GLfloat colors[] = { 
-    1.0f,  1.0f,  1.0f, 1.0f, 
-    1.0f,  1.0f,  1.0f, 1.0f,
-    1.0f,  1.0f,  1.0f, 1.0f,
-    1.0f,  0.0f,  0.0f, 1.0f,
-    1.0f,  0.0f,  0.0f, 1.0f,
-    1.0f,  0.0f,  0.0f, 1.0f,
-    0.0f,  1.0f,  0.0f, 1.0f,
-    0.0f,  1.0f,  0.0f, 1.0f,
-    0.0f,  1.0f,  0.0f, 1.0f,
-    0.0f,  0.0f,  1.0f, 1.0f,
-    0.0f,  0.0f,  1.0f, 1.0f,
-    0.0f,  0.0f,  1.0f, 1.0f,
-  };
 
 // write a screenshot to the specified filename
 void saveScreenshot(const char * filename)
@@ -124,11 +140,11 @@ void displayFunc()
   glEnableVertexAttribArray(loc);
   const void * offset = (const void*) 0;
   glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, offset);
-
-  /*GLuint loc2 = glGetAttribLocation(programID, "color"); 
+  GLuint loc2 = glGetAttribLocation(programID, "color"); 
   glEnableVertexAttribArray(loc2);
   offset = (const void*) sizePosition; 
-  glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, 0, offset);*/
+  glVertexAttribPointer(loc2, 4, GL_FLOAT, GL_FALSE, 0, offset);
+
 
   // 4. Set transformation to matrix
   GLint h_modelViewMatrix = glGetUniformLocation(programID, "modelViewMatrix");
@@ -151,23 +167,31 @@ void displayFunc()
     default:
       glDrawArrays(GL_TRIANGLES, first, count);
   }
- 
-  //glDisableVertexAttribArray(loc2);
+  glDisableVertexAttribArray(loc);
+  glDisableVertexAttribArray(loc2);
   glutSwapBuffers();
 }
 
 void idleFunc()
 {
-  // do some stuff... 
-  /*
-  char * fName = new char[99];
-  itoa(currentFrame, fName, 10);
-  fName = strcat(fName, ".jpg");
-  saveScreenshot(fName);
-  free(fName);
-  currentFrame++;
-  */
-  // for example, here, you can save the screenshots to disk (to make the animation)
+  // save the screen shot
+  if (saveMode == 1) {
+    char fName[] = {'s', 'a', 'v', 'e', '/', a1, a2, a3, '.', 'j', 'p', 'g', '\0'};
+    ++a3;
+    if (a3 > '9') {
+      ++a2; 
+      a3 = '0';
+    }
+    if (a2 > '9') {
+      ++a1; 
+      a2 = '0';
+      cout << fName << endl;
+    }
+    if (a1 > '9') 
+      a1 = '0'; 
+    saveScreenshot(fName);
+  }
+  
   // make the screen update 
   GLfloat delta = 1.0; 
   GLint axis = 1; 
@@ -317,18 +341,14 @@ void keyboardFunc(unsigned char key, int x, int y)
   }
 }
 
-void RenderMode(int mode) {
+void myRenderPosition() {
   int imageHeight = heightmapImage->getHeight();
   int imageWidth = heightmapImage->getWidth();
   int imageByte = heightmapImage->getBytesPerPixel();
-  cout << "Image height: " << imageHeight << " width: " << imageWidth << " byte: " << imageByte << endl;
 
-  if (mode == TRIANGLES) {
-    cout << "Render type: TRIANGLES" << endl;
+  if (renderMode == TRIANGLES) {
     numVertices = (imageHeight - 1) * (imageWidth - 1) * 6;
     sizePosition = numVertices * 3 * 4;
-    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
-
     int count = 0;
     float scale_XY = 1.0f / imageHeight;
     float scale_Z = 0.2f / 255.0f;
@@ -359,28 +379,9 @@ void RenderMode(int mode) {
         positions[count++] = heightmapImage->getPixel(i + 1, j + 1, 0) * scale_Z;
       }
     }
-  } else if (mode == POINTS || mode == LINES) {
-    cout << "Render type: TRIANGLES" << endl;
-    numVertices = imageHeight * imageWidth;
-    sizePosition = numVertices * 3 * 4;
-    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
-
-    int count = 0;
-    float scale_XY = 1.0 / 255.0f;
-    float scale_Z = scale_XY * 0.2;
-    for (int i = 0; i < imageHeight; ++i) {
-      for (int j = 0; j < imageWidth; ++j) {
-        positions[count++] = i * scale_XY - 0.5;
-        positions[count++] = j * scale_XY - 0.5;
-        positions[count++] = heightmapImage->getPixel(i, j, 0) * scale_Z;
-      }
-    }
   } else {
-    cout << "Render type: TRIANGLES" << endl;
     numVertices = imageHeight * imageWidth;
     sizePosition = numVertices * 3 * 4;
-    cout << "sizeof(Position): " << sizeof(positions) << " numVertics: " << numVertices << endl;
-
     int count = 0;
     float scale_XY = 1.0 / 255.0f;
     float scale_Z = scale_XY * 0.2;
@@ -389,16 +390,91 @@ void RenderMode(int mode) {
         positions[count++] = i * scale_XY - 0.5;
         positions[count++] = j * scale_XY - 0.5;
         positions[count++] = heightmapImage->getPixel(i, j, 0) * scale_Z;
+    
       }
     }
   }
-
-
-
-
-
-
 }
+
+void myRenderColor() {
+  int imageHeight = heightmapImage->getHeight();
+  int imageWidth = heightmapImage->getWidth();
+  int imageByte = heightmapImage->getBytesPerPixel();
+
+  char *filename;
+  colorImage = new ImageIO();
+  if (imageByte == 1 && colorMode == 2) {
+    if (imageHeight == 128) {
+      char filenameColor[] = "heightmap/USC128.jpg";
+      filename = filenameColor;
+    } else if (imageHeight == 256) {
+      char filenameColor[] = "heightmap/USC256.jpg";
+      filename = filenameColor;
+    } else if (imageHeight == 512) {
+      char filenameColor[] = "heightmap/sea512.jpg";
+      filename = filenameColor;
+    } else if (imageHeight == 768) {
+      char filenameColor[] = "heightmap/USC768.jpg";
+      filename = filenameColor;
+    }
+    if (colorImage->loadJPEG(filename) != ImageIO::OK)
+    {
+      cout << "Error reading image " << filename << "." << endl;
+      exit(EXIT_FAILURE);
+    } 
+  } else {
+    colorImage = heightmapImage;
+  }
+  
+  if (colorMode == 0 || (colorMode == 1 && imageByte == 1)) { // gradient or grayscale own image
+
+  } else if (renderMode != 2) { // color image
+    sizeColor = numVertices * 4 * 4;
+    int count = 0;
+    float scale = 1.0f / 255.0f;
+    for (int i = 0; i < imageHeight; ++i) {
+      for (int j = 0; j < imageWidth; ++j) {
+        colors[count++] = colorImage->getPixel(i, j, 0) * scale;
+        colors[count++] = colorImage->getPixel(i, j, 1) * scale;
+        colors[count++] = colorImage->getPixel(i, j, 2) * scale;
+        colors[count++] = 1.0f;
+      }
+    }
+  } else if (renderMode == 2){  // texture color image
+    sizeColor = numVertices * 4 * 4;
+    int count = 0;
+    float scale = 1.0f / 255.0f;
+    for (int i = 0; i < imageHeight - 1; ++i) {
+      for (int j = 0; j < imageWidth - 1; ++j) {
+        colors[count++] = colorImage->getPixel(i, j, 0) * scale;
+        colors[count++] = colorImage->getPixel(i, j, 1) * scale;
+        colors[count++] = colorImage->getPixel(i, j, 2) * scale;
+        colors[count++] = 1.0f;
+        colors[count++] = colorImage->getPixel(i + 1, j, 0) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j, 1) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j, 2) * scale;
+        colors[count++] = 1.0f;
+        colors[count++] = colorImage->getPixel(i, j + 1, 0) * scale;
+        colors[count++] = colorImage->getPixel(i, j + 1, 1) * scale;
+        colors[count++] = colorImage->getPixel(i, j + 1, 2) * scale;
+        colors[count++] = 1.0f;
+        colors[count++] = colorImage->getPixel(i + 1, j, 0) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j, 1) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j, 2) * scale;
+        colors[count++] = 1.0f;
+        colors[count++] = colorImage->getPixel(i, j + 1, 0) * scale;
+        colors[count++] = colorImage->getPixel(i, j + 1, 1) * scale;
+        colors[count++] = colorImage->getPixel(i, j + 1, 2) * scale;
+        colors[count++] = 1.0f;
+        colors[count++] = colorImage->getPixel(i + 1, j + 1, 0) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j + 1, 1) * scale;
+        colors[count++] = colorImage->getPixel(i + 1, j + 1, 2) * scale;
+        colors[count++] = 1.0f;
+      }
+    }
+  }
+}
+
 
 void initScene(int argc, char *argv[])
 {
@@ -409,30 +485,25 @@ void initScene(int argc, char *argv[])
     cout << "Error reading image " << argv[1] << "." << endl;
     exit(EXIT_FAILURE);
   }
-  renderMode = LINES;
-  RenderMode (renderMode);
+  myRenderPosition();
+  myRenderColor();
   
-
   // 2. Clear and set scene
-  glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
   glEnable(GL_DEPTH_TEST);
 
-  // 3. Initialize VAO
+  // 3. Initialize VAO and VBO
   glGenVertexArrays(1, &VertexArrayID);
   glBindVertexArray(VertexArrayID);
-
-  // 4. Initialize VBO
   glGenBuffers(1, &vertexbuffer);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer); 
   glBufferData(GL_ARRAY_BUFFER, sizePosition, NULL, GL_STATIC_DRAW); 
-  //glBufferData(GL_ARRAY_BUFFER, sizePosition + sizeColor, NULL, GL_STATIC_DRAW); 
+  glBufferData(GL_ARRAY_BUFFER, sizePosition + sizeColor, NULL, GL_STATIC_DRAW); 
   glBufferSubData(GL_ARRAY_BUFFER, 0, sizePosition, &positions[0]);
-  //glBufferSubData(GL_ARRAY_BUFFER, sizePosition, sizeColor, colors); 
+  glBufferSubData(GL_ARRAY_BUFFER, sizePosition, sizeColor, &colors[0]); 
 
-  // 5. Initialize matrix
+  // 4. Initialize matrix and pipeline
   matrix = new OpenGLMatrix();
-
-  // 6. Bind pipeline shader
   pipelineProgram = new BasicPipelineProgram();
   pipelineProgram->Init("../openGLHelper-starterCode");
   pipelineProgram->Bind();

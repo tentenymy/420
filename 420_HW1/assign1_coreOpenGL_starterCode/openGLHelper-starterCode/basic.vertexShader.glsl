@@ -7,13 +7,17 @@ out vec4 col;
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
+
+
 void main()
 {
-  // compute the transformed and projected vertex position (into gl_Position) 
-  // compute the vertex color (into col)
-  // students need to implement this
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0f);
+	int mode = 0; // 0: Gradient; 1: texture
 
-  col = vec4(position[2] * 5.0f, position[2] * 5.0f, 0.0f, 1.0);
+
+  	gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0f);
+  	if (mode == 0) // Gradient
+  		col = vec4(position[2] * 5.0f, position[2] * 5.0f, 0.0f, 1.0);
+  	else  // Colorful image or texture image
+  		col = color;
 }
 
