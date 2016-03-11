@@ -33,6 +33,20 @@
 
 using namespace std;
 
+/////////////////////////////////////////////
+///////////////// STRUCTURE /////////////////
+/////////////////////////////////////////////
+struct Point {
+  double x;
+  double y;
+  double z;
+};
+
+struct Spline {
+  int numControlPoints;
+  struct Point *points;
+};
+
 
 //////////////////////////////////////////////////
 ///////////////// STATE OF WORLD /////////////////
@@ -54,52 +68,105 @@ int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
 
 float colorClear[4] = {0.0f, 0.0f, 0.4f, 0.0f}; // glClearColor();
-float matLookat[9] = {0.0f, 20.0f, -3.0f, 0.0f, 20.0f, 0.0f, 1.0f, 1.0f, 0.0f}; // glMatrix->LookAt();
-float matPerspective[4] = {170.0f, windowWidth / windowHeight, 0.1f, 200.0f}; 
-GLenum drawArrayMode = GL_LINE_STRIP; // glDrawArrays();
+//float matLookat[9] = {0.0f, 20.0f, -3.0f, 0.0f, 20.0f, 0.0f, 1.0f, 1.0f, 0.0f}; // glMatrix->LookAt();
+//float matPerspective[4] = {170.0f, windowWidth / windowHeight, 0.1f, 200.0f}; 
+GLenum drawArrayMode = GL_LINE_STRIP;
 
-//////////////////////////////////////////////
-///////////////// HOMEWORK 1 /////////////////
-//////////////////////////////////////////////
+//float matLookat[9] = {0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}; // glMatrix->LookAt();
+//float matPerspective[4] = {90.0f, 1.0f, 0.1f, 100.0f}; 
+//GLenum drawArrayMode = GL_TRIANGLES; // glDrawArrays();
+
+// OUTSIDE the box
+//float matLookat[9] = {0.0f, -3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}; 
+//float matPerspective[4] = {80.0f, windowWidth / windowHeight, 0.1f, 10.0f}; 
+
+// INSIDE the box
+float matLookat[9] = {0.285714f, -0.685714f, 0.0f, -0.4f, 0.8f, 0.0f, 0.0f, 0.0f, 1.0f}; 
+float matPerspective[4] = {80.0f, windowWidth / windowHeight, 0.00001f, 10.0f}; 
+
+/////////////////////////////////////////////
+///////////////// Parameter /////////////////
+/////////////////////////////////////////////
+int saveMode = 0; // 0: no save; 1: save screen shot
+char saveScreenShotName1 = '0', saveScreenShotName2 = '0', saveScreenShotName3 = '0';
+int countPoint = 3;
+
 BasicPipelineProgram *pipelineProgram;
 GLuint programID;
 OpenGLMatrix *glMatrix;
-GLuint vertexArrayObjects; /* Vertex Array Objects */
-GLuint vertexBufferObject; /* Vertex Buffer Objects */
-vector<GLfloat> pos;
-vector<GLfloat> col;
-int saveMode = 0; // 0: no save; 1: save screen shot
-char saveScreenShotName1 = '0', saveScreenShotName2 = '0', saveScreenShotName3 = '0';
+GLuint vertexArrayObjects; 
+GLuint h_textureSampler;
 
-//////////////////////////////////////////////
-///////////////// HOMEWORK 2 /////////////////
-//////////////////////////////////////////////
-struct Point {
-	double x;
-	double y;
-	double z;
-};
+// Ground
+GLuint posGroundBuffer; 
+GLuint uvGroundBuffer;
+vector<GLfloat> posGround;
+vector<GLfloat> uvGround;
+GLuint textureGroundID;
+const char textureGroundFilename[] = "heightmap/Cubemap.jpg";
 
-struct Spline {
-	int numControlPoints;
-	struct Point *points;
-};
+// Sky
+GLuint posSkyBuffer; 
+GLuint uvSkyBuffer;
+vector<GLfloat> posSky;
+vector<GLfloat> uvSky;
+GLuint textureSkyID;
+//const char textureSkyFilename[] = "heightmap/forest512.jpg";
 
+// Spline
 Spline *splines; // the spline array 
 int numSplines; // total number of splines 
-
 float interval = 0.001f;
 float matrixBasic[] = {-0.5, 1.5, -1.5, 0.5, 1.0, -2.5, 2.0, -0.5, -0.5, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0 };
 
-ImageIO 
+vector<GLfloat> posSpline;
+vector<GLfloat> uvSpline;
+GLuint posSplineBuffer; 
+GLuint uvSplineBuffer;
+GLuint textureSplineID;
+const char textureSplineFilename[] = "heightmap/USC256.jpg";
+vector<GLfloat> tanSpline;
+
+
+float B0[3] = {};
+float N0[3] = {};
+
+vector<GLfloat> posRailLeft;
+vector<GLfloat> posRailRight;
+vector<GLfloat> uvRail;
+float scaleRail = 0.005f;
+float centerRail = 0.05f;
+GLuint posRailLeftBuffer;
+GLuint posRailRightBuffer;
+GLuint uvRailBuffer;
+
+int speedCamera = 60;
+float scaleCamera = 0.05;
+
+vector<GLfloat> posRailCross;
+vector<GLfloat> uvRailCross;
+GLuint posRailCrossBuffer;
+GLuint uvRailCrossBuffer;
+float scaleNCross = 0.005f;
+float scaleBCross = 0.05f;
+float scaleTCross = 0.005f;
+
+GLuint textureRailCrossID;
+const char textureRailCrossFilename[] = "heightmap/coral.jpg";
 
 ///////////////////////////////////////////////
 ///////////////// DECLARATION /////////////////
 ///////////////////////////////////////////////
 /* my helper functions */
-void printDetail();
-void myRenderPosition();
-void myRenderColor();
+void normalizeSpline();
+void initialSpline();
+void initialEnvironment();
+void bindTexture(GLint, GLuint);
+GLuint bindBufferPos(GLuint);
+GLuint bindBufferUV(GLuint);
+void drawGround();
+void drawSky();
+void drawSpline();
 
 /* HW1 & HW2 need to implement */
 void initScene(int argc, char *argv[]);
@@ -119,7 +186,94 @@ int loadSplines(char * argv);
 int initTexture(const char * imageFilename, GLuint textureHandle);
 
 
+////////////////////////////////////////
+///////////////// DATA /////////////////
+////////////////////////////////////////
+GLfloat cubemapPos[] = {
+  -1.0f, 1.0f, -1.0f, // Ground
+  1.0f, 1.0f, -1.0f,
+  -1.0f, -1.0f, -1.0f,
+  1.0f, 1.0f, -1.0f,
+  -1.0f, -1.0f, -1.0f,
+  1.0f, -1.0f, -1.0f,
 
+  -1.0f, 1.0f, 1.0f, // front
+  1.0f, 1.0f, 1.0f,
+  -1.0f, 1.0f, -1.0f,
+  1.0f, 1.0f, 1.0f,
+  -1.0f, 1.0f, -1.0f,
+  1.0f, 1.0f, -1.0f,
 
+  1.0f, 1.0f, 1.0f, // right
+  1.0f, -1.0f, 1.0f,
+  1.0f, 1.0f, -1.0f,
+  1.0f, -1.0f, 1.0f,
+  1.0f, 1.0f, -1.0f,
+  1.0f, -1.0f, -1.0f,
+
+  1.0f, -1.0f, 1.0f, // back
+  -1.0f, -1.0f, 1.0f,
+  1.0f, -1.0f, -1.0f,
+  -1.0f, -1.0f, 1.0f,
+  1.0f, -1.0f, -1.0f,
+  -1.0f, -1.0f, -1.0f,
+
+  -1.0f, -1.0f, 1.0f, // left
+  -1.0f, 1.0f, 1.0f,
+  -1.0f, -1.0f, -1.0f,
+  -1.0f, 1.0f, 1.0f,
+  -1.0f, -1.0f, -1.0f,
+  -1.0f, 1.0f, -1.0f,
+
+  -1.0f, -1.0f, 1.0f,  // top
+  1.0f, -1.0f, 1.0f,
+  -1.0f, 1.0f, 1.0f,
+  1.0f, -1.0f, 1.0f,
+  -1.0f, 1.0f, 1.0f,
+  1.0f, 1.0f, 1.0f
+};
+GLfloat cubemapUV[] = { 
+  0.25f, 0.333333f,
+  0.50f, 0.333333f,
+  0.25f, 0.0f,
+  0.50f, 0.333333f,
+  0.25f, 0.0f,
+  0.50f, 0.0f,
+
+  0.25f, 0.666667f, 
+  0.50f, 0.666667f,
+  0.25f, 0.333333f,
+  0.50f, 0.666667f,
+  0.25f, 0.333333f,
+  0.50f, 0.333333f,
+
+  0.50f, 0.666667f, 
+  0.75f, 0.666667f,
+  0.50f, 0.333333f,
+  0.75f, 0.666667f,
+  0.50f, 0.333333f,
+  0.75f, 0.333333f,
+
+  0.75f, 0.666667f, 
+  1.00f, 0.666667f,
+  0.75f, 0.333333f, 
+  1.00f, 0.666667f,
+  0.75f, 0.333333f, 
+  1.00f, 0.333333f,
+
+  0.00f, 0.666667f,
+  0.25f, 0.666667f,
+  0.00f, 0.333333f,
+  0.25f, 0.666667f,
+  0.00f, 0.333333f,
+  0.25f, 0.333333f,
+
+  0.25f, 1.00f,
+  0.50f, 1.00f, 
+  0.25f, 0.666667f, 
+  0.50f, 1.00f, 
+  0.25f, 0.666667f, 
+  0.50f, 0.666667f
+};
 
 

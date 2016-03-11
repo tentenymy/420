@@ -1,37 +1,50 @@
 ﻿#include "hw2.h"
 using namespace std;
 
-/* HW2 tips */
-/*void addTriangle(float posA[3], float posB[3], float posC[3], float uvA[2], float uvB[2], float uvC[2]) {
-  for (int i = 0; i < 3; ++i)
-    pos.push_back(posA[i]); 
-  for (int i = 0; i < 3; ++i)
-    pos.push_back(posB[i]); 
-  for (int i = 0; i < 3; ++i)
-    pos.push_back(posC[i]); 
-  for (int i = 0; i < 2; ++i)
-    uvs.push_back(uvA[i]); 
-  for (int i = 0; i < 2; ++i)
-    uvs.push_back(uvB[i]); 
-  for (int i = 0; i < 2; ++i)
-    uvs.push_back(uvC[i]);
-}*/
+void normalizeSpline() {
+  double maxX = -1000.0, minX = 1000.0;
+  double maxY = -1000.0, minY = 1000.0;
+  double maxZ = -1000.0, minZ = 1000.0;
+  double bound = 0.8;
+  for (int i = 0; i < numSplines; ++i) {
+    for (int j = 0; j < splines[i].numControlPoints; j++) {
+      if (splines[i].points[j].x > maxX)
+          maxX = splines[i].points[j].x;
+      if (splines[i].points[j].x < minX)
+          minX = splines[i].points[j].x;
 
-/* For debug */
-void printDetail() {
-  cout << "Vertices of Positions: " << pos.size() / 3 << endl;
-  cout << "Vertices of Colors: " << col.size() / 3 << endl;
-  cout << "Positions: " << endl;
-  for (int i = 0; i < pos.size() / 3 && i < 10; ++i)
-    cout << pos[3 * i] << ", " << pos[3 * i + 1] << ", " << pos[3 * i + 2] << endl;
-  cout << endl;
+      if (splines[i].points[j].y > maxY)
+          maxY = splines[i].points[j].y;
+      if (splines[i].points[j].y < minY)
+          minY = splines[i].points[j].y;
+
+      if (splines[i].points[j].z > maxZ)
+          maxZ = splines[i].points[j].z;
+      if (splines[i].points[j].z < minZ)
+          minZ = splines[i].points[j].z;
+    }
+  }
+  double scaleXYZ = maxX - minX > maxY - minY ? maxX - minX : maxY - minY;
+  scaleXYZ = scaleXYZ < maxZ - minZ ? maxZ - minZ : scaleXYZ;
+  scaleXYZ = 2.0 * bound / scaleXYZ;
+  double centerX = (maxX - minX) * 0.5;
+  double centerY = (maxY - minY) * 0.5;
+  double centerZ = (maxZ - minZ) * 0.5;
+
+  for (int i = 0; i < numSplines; ++i) {
+    for (int j = 0; j < splines[i].numControlPoints; j++) {
+      splines[i].points[j].x = (splines[i].points[j].x - centerX) * scaleXYZ;
+      splines[i].points[j].y = (splines[i].points[j].y - centerY) * scaleXYZ;
+      splines[i].points[j].z = (splines[i].points[j].z - centerZ) * scaleXYZ;
+    }
+  }
 }
 
-/* HW2: initial postion of splines
- * Catmull-Rom Spline Matrix
- * P = U * Basic * Control 
- */
-void myRenderPosition() {
+void initialSpline() {
+  // 1. Normalization the spline
+  normalizeSpline();
+
+  // 2. Initial data for splines
   for(int i = 0; i < numSplines; ++i) {
     for (int j = 0; j < splines[i].numControlPoints - 3; j++) {
       float matrixControl[12] = {};
@@ -43,6 +56,8 @@ void myRenderPosition() {
       for (float u = 0.0f; u < 1.0f; u += interval) {
         float matrixU[4] = {u * u * u, u * u, u, 1};
         float matrixUB[4] = {}, matrixUBC[3] = {};
+        float matrixTanU[4] = {3 * u * u, 2 * u, 1, 0};
+        float matrixTanUB[4] = {}, matrixTanUBC[3] = {};
         for (int m = 0; m < 4; ++m) {
           for (int n = 0; n < 4; ++n)
             matrixUB[m] += matrixU[n] * matrixBasic[n * 4 + m];
@@ -51,80 +66,417 @@ void myRenderPosition() {
           for (int n = 0; n < 4; ++n)
             matrixUBC[m] += matrixUB[n] * matrixControl[n * 3 + m];
         }
-        pos.push_back(matrixUBC[0]);
-        pos.push_back(matrixUBC[1]);
-        pos.push_back(matrixUBC[2]);
+         for (int m = 0; m < 4; ++m) {
+          for (int n = 0; n < 4; ++n)
+            matrixTanUB[m] += matrixTanU[n] * matrixBasic[n * 4 + m];
+        }
+        for (int m = 0; m < 3; ++m) {
+          for (int n = 0; n < 4; ++n)
+            matrixTanUBC[m] += matrixTanUB[n] * matrixControl[n * 3 + m];
+        }
+        float temp = 1 / sqrt(matrixTanUBC[0] * matrixTanUBC[0] + matrixTanUBC[1] * matrixTanUBC[1] + matrixTanUBC[2] * matrixTanUBC[2]);
+        matrixTanUBC[0] *= temp;
+        matrixTanUBC[1] *= temp;
+        matrixTanUBC[2] *= temp;
+        posSpline.push_back(matrixUBC[0]);
+        posSpline.push_back(matrixUBC[1]);
+        posSpline.push_back(matrixUBC[2]);
+        tanSpline.push_back(matrixTanUBC[0]);
+        tanSpline.push_back(matrixTanUBC[1]);
+        tanSpline.push_back(matrixTanUBC[2]);
       }
     }
-    pos.push_back(splines[i].points[splines[i].numControlPoints - 2].x);
-    pos.push_back(splines[i].points[splines[i].numControlPoints - 2].y);
-    pos.push_back(splines[i].points[splines[i].numControlPoints - 2].z);
+    posSpline.push_back(splines[i].points[splines[i].numControlPoints - 2].x);
+    posSpline.push_back(splines[i].points[splines[i].numControlPoints - 2].y);
+    posSpline.push_back(splines[i].points[splines[i].numControlPoints - 2].z);
+    tanSpline.push_back(-1.0f);
+    tanSpline.push_back(0.0f);
+    tanSpline.push_back(0.0f);
   }
+  GLfloat tempUV[] = {
+    0.0f, 0.0f,
+    0.1f, 0.0f,
+    0.1f, 0.1f
+  };
+  for (int i = 0; i < sizeof(tempUV) / sizeof(GLfloat); i++) {
+    uvSpline.push_back(tempUV[i]);
+  }
+
+  // 2. Load texture
+  glGenTextures(1, &textureSplineID);
+  int code = initTexture(textureSplineFilename, textureSplineID);
+  if (code != 0) {
+    printf("Error loading the texture image. \n");
+    exit(EXIT_FAILURE);
+  }
+
+  // 3. Link vbo
+  glGenBuffers(1, &posSplineBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posSplineBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posSpline.size() * sizeof(GLfloat), &posSpline[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &uvSplineBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvSplineBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvSpline.size() * sizeof(GLfloat), &uvSpline[0], GL_STATIC_DRAW);
 }
 
-/* HW2: initial color of splines
- * no color
- */
-void myRenderColor() {}
+void initialRail() {
+  float T0[3] = {tanSpline[0], tanSpline[1], tanSpline[2]};
+  float V[3] = {0, 1, 0};
+  N0[0] = T0[1] * V[2] - T0[2] * V[1];
+  N0[1] = T0[2] * V[0] - T0[0] * V[2];
+  N0[2] = T0[0] * V[1] - T0[1] * V[0];
+  B0[0] = T0[1] * N0[2] - T0[2] * N0[1];
+  B0[1] = T0[2] * N0[0] - T0[0] * N0[2];
+  B0[2] = T0[0] * N0[1] - T0[1] * N0[0];
+  float tempB0[3] = {B0[0], B0[1], B0[2]};
+
+  float vertex[8][3] = {
+    posSpline[0] + scaleRail * (-N0[0] + B0[0]),
+    posSpline[1] + scaleRail * (-N0[1] + B0[1]),
+    posSpline[2] + scaleRail * (-N0[2] + B0[2]),
+    posSpline[0] + scaleRail * (N0[0] + B0[0]),
+    posSpline[1] + scaleRail * (N0[1] + B0[1]),
+    posSpline[2] + scaleRail * (N0[2] + B0[2]),
+    posSpline[0] + scaleRail * (N0[0] - B0[0]),
+    posSpline[1] + scaleRail * (N0[1] - B0[1]),
+    posSpline[2] + scaleRail * (N0[2] - B0[2]),
+    posSpline[0] + scaleRail * (-N0[0] - B0[0]),
+    posSpline[1] + scaleRail * (-N0[1] - B0[1]),
+    posSpline[2] + scaleRail * (-N0[2] - B0[2])
+  };
+
+  float vertex2[8][3] = {
+    posSpline[0] - scaleNCross * N0[0] + scaleBCross * B0[0],
+    posSpline[1] - scaleNCross * N0[1] + scaleBCross * B0[1],
+    posSpline[2] - scaleNCross * N0[2] + scaleBCross * B0[2],
+    posSpline[0] + scaleNCross * N0[0] + scaleBCross * B0[0],
+    posSpline[1] + scaleNCross * N0[1] + scaleBCross * B0[1],
+    posSpline[2] + scaleNCross * N0[2] + scaleBCross * B0[2],
+    posSpline[0] + scaleNCross * N0[0] - scaleBCross * B0[0],
+    posSpline[1] + scaleNCross * N0[1] - scaleBCross * B0[1],
+    posSpline[2] + scaleNCross * N0[2] - scaleBCross * B0[2],
+    posSpline[0] - scaleNCross * N0[0] - scaleBCross * B0[0],
+    posSpline[1] - scaleNCross * N0[1] - scaleBCross * B0[1],
+    posSpline[2] - scaleNCross * N0[2] - scaleBCross * B0[2]
+  };
+
+
+  int indexlist[4] = {1, 2, 0, 3};
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      posRailLeft.push_back(vertex[indexlist[i]][j] + centerRail * B0[j]);
+      posRailRight.push_back(vertex[indexlist[i]][j] - centerRail * B0[j]);
+    }
+  }
+  
+  // 2. Initial data for splines
+  for (int i = 1; i < posSpline.size() / 3; ++i) {
+    float T1[3] = {tanSpline[i * 3], tanSpline[i * 3 + 1], tanSpline[i * 3 + 2]};
+    float N1[3] = { // BO * T1
+      B0[1] * T1[2] - B0[2] * T1[1], 
+      B0[2] * T1[0] - B0[0] * T1[2],
+      B0[0] * T1[1] - B0[1] * T1[0]
+    };
+    float sumN1 = 1.0f / sqrt(N1[0] * N1[0] + N1[1] * N1[1] + N1[2] * N1[2]);
+    N1[0] *= sumN1;
+    N1[1] *= sumN1;
+    N1[2] *= sumN1;
+    
+    float B1[3] = { // T1 * N1
+      T1[1] * N1[2] - T1[2] * N1[1], 
+      T1[2] * N1[0] - T1[0] * N1[2],
+      T1[0] * N1[1] - T1[1] * N1[0]
+    };
+    float sumB1 = 1.0f / sqrt(B1[0] * B1[0] + B1[1] * B1[1] + B1[2] * B1[2]);
+    B1[0] *= sumB1;
+    B1[1] *= sumB1;
+    B1[2] *= sumB1;
+    
+    for (int j = 0; j < 3; j++) {
+      vertex[4][j] = posSpline[i * 3 + j] + scaleRail * (-N1[j] + B1[j]);
+      vertex[5][j] = posSpline[i * 3 + j] + scaleRail * (N1[j] + B1[j]);
+      vertex[6][j] = posSpline[i * 3 + j] + scaleRail * (N1[j] - B1[j]);
+      vertex[7][j] = posSpline[i * 3 + j] + scaleRail * (-N1[j] - B1[j]);
+    }
+
+    for (int j = 0; j < 3; j++) {
+      vertex2[4][j] = posSpline[i * 3 + j] - scaleNCross * N1[j] + scaleBCross * B1[j];
+      vertex2[5][j] = posSpline[i * 3 + j] + scaleNCross * N1[j] + scaleBCross * B1[j];
+      vertex2[6][j] = posSpline[i * 3 + j] + scaleNCross * N1[j] - scaleBCross * B1[j];
+      vertex2[7][j] = posSpline[i * 3 + j] - scaleNCross * N1[j] - scaleBCross * B1[j];
+    }
+      
+    int indexList[] = {
+      0, 1, 3, 1, 3, 2, 3, 2, 7, 2, 7, 6,
+      7, 6, 4, 6, 4, 5, 4, 5, 0, 5, 0, 1, 
+      1, 2, 5, 2, 5, 6, 0, 3, 4, 3, 4, 7
+    };
+    for (int k = 0; k < sizeof(indexList) / sizeof(int); k++) {
+      for (int j = 0; j < 3; j++) {
+        float temp = indexList[k] < 4 ? centerRail * B0[j] : centerRail * B1[j];
+        posRailLeft.push_back(vertex[indexList[k]][j] + temp);
+        posRailRight.push_back(vertex[indexList[k]][j] - temp);
+      }
+    }
+
+    if (i % 1000 == 0) {
+      for (int k = 0; k < sizeof(indexList) / sizeof(int); k++) {
+        for (int j = 0; j < 3; j++) {
+          //float temp = indexList[k] <= 1 || indexList[k] == 4 || indexList[k] == 5  ? scaleBCross * B1[j] : -scaleBCross * B1[j];
+          posRailCross.push_back(vertex2[indexList[k]][j]);
+        }
+      }
+    }
+    
+    B0[0] = B1[0];
+    B0[1] = B1[1];
+    B0[2] = B1[2];
+    for (int k = 0; k < 4; k++) {
+      for (int j = 0; j < 3; j++)
+        vertex[k][j] = vertex[k + 4][j];
+    }
+      
+   for (int k = 0; k < 4; k++) {
+    for (int j = 0; j < 3; j++)
+      vertex2[k][j] = vertex2[k + 4][j];
+   }
+  }
+  
+  B0[0] = tempB0[0];
+  B0[1] = tempB0[1];
+  B0[2] = tempB0[2];
+
+  // UV
+  GLfloat tempUV[] = {
+    0.0f, 0.0f,
+    0.0f, 1.0f,
+    1.0f, 0.0f,
+    1.0f, 1.0f
+  };
+  for (int i = 0; i < sizeof(tempUV) / sizeof(GLfloat); i++) {
+    uvRail.push_back(tempUV[i]);
+  }
+
+  for (int i = 0; i < sizeof(tempUV) / sizeof(GLfloat); i++) {
+    uvRailCross.push_back(tempUV[i]);
+  }
+
+   // 2. Load texture
+  glGenTextures(1, &textureRailCrossID);
+  int code = initTexture(textureRailCrossFilename, textureRailCrossID);
+  if (code != 0) {
+    printf("Error loading the texture image. \n");
+    exit(EXIT_FAILURE);
+  }
+  cout << textureRailCrossFilename << endl;
+
+  // 3. Link vbo
+  glGenBuffers(1, &posRailLeftBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posRailLeftBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailLeft.size() * sizeof(GLfloat) , &posRailLeft[0], GL_STATIC_DRAW); 
+
+  glGenBuffers(1, &posRailRightBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posRailRightBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailRight.size() * sizeof(GLfloat) , &posRailRight[0], GL_STATIC_DRAW); 
+
+  glGenBuffers(1, &posRailCrossBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posRailCrossBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailCross.size() * sizeof(GLfloat) , &posRailCross[0], GL_STATIC_DRAW); 
+
+  glGenBuffers(1, &uvRailBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvRailBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvRail.size() * sizeof(GLfloat), &uvRail[0], GL_STATIC_DRAW);
+
+  glGenBuffers(1, &uvRailCrossBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvRailCrossBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvRailCross.size() * sizeof(GLfloat), &uvRailCross[0], GL_STATIC_DRAW);
+}
+
+void initialEnvironment() {
+  // 1. Initial data for sky and ground
+  int numVertex = 6;
+  for (int i = 0; i < numVertex * 3; ++i) 
+    posGround.push_back(cubemapPos[i]);
+  for (int i = 0; i < numVertex * 2; ++i) 
+    uvGround.push_back(cubemapUV[i]);
+  for (int i = numVertex * 3; i < sizeof(cubemapPos) / sizeof(GLfloat); ++i) 
+    posSky.push_back(cubemapPos[i]);
+  for (int i = numVertex * 2; i < sizeof(cubemapUV) / sizeof(GLfloat); ++i) 
+    uvSky.push_back(cubemapUV[i]);
+
+  // 2. Load cube map
+  glGenTextures(1, &textureGroundID);
+  int code = initTexture(textureGroundFilename, textureGroundID);
+  if (code != 0) {
+    printf("Error loading the texture image. \n");
+    exit(EXIT_FAILURE);
+  }
+
+  // 3. Link vbo for ground
+  glGenBuffers(1, &posGroundBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posGroundBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posGround.size() * sizeof(GLfloat), &posGround[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &uvGroundBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvGroundBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvGround.size() * sizeof(GLfloat), &uvGround[0], GL_STATIC_DRAW);
+
+  // 4. Link vbo for sky
+  glGenBuffers(1, &posSkyBuffer); 
+  glBindBuffer(GL_ARRAY_BUFFER, posSkyBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posSky.size() * sizeof(GLfloat), &posSky[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &uvSkyBuffer);
+  glBindBuffer(GL_ARRAY_BUFFER, uvSkyBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvSky.size() * sizeof(GLfloat), &uvSky[0], GL_STATIC_DRAW);
+  
+}
 
 void initScene(int argc, char *argv[]) {
-  // 1. Initialize position and color
-  myRenderPosition();
-  myRenderColor();
-
-  // 2. Clear and set scene
+  // 1. Clear and set scene
   glClearColor(colorClear[0], colorClear[1], colorClear[2], colorClear[3]);
   glEnable(GL_DEPTH_TEST);
 
-  // 3. Initialize VAO and VBO
-  GLsizei sizePos = pos.size() * sizeof(GLfloat);
-  GLsizei sizeUV = uvs.size() * sizeof (GLfloat);
-  GLsizei sizeCol = col.size() * sizeof(GLfloat);
-  glGenVertexArrays(1, &vertexArrayObjects);
-  glBindVertexArray(vertexArrayObjects); 
-  glGenBuffers(1, &vertexBufferObject); 
-  glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);  
-  glBufferData(GL_ARRAY_BUFFER, sizePos + sizeCol + sizeUV, NULL, GL_STATIC_DRAW); 
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizePos, &pos[0]); // Position
-  glBufferSubData(GL_ARRAY_BUFFER, sizePos, sizeUV, &uvs[0]); // UV
-  glBufferSubData(GL_ARRAY_BUFFER, sizePos + sizeUV, sizeCol, &col[0]); // Color
-
-  // 4. Initialize matrix and pipeline
+  // 2. Initialize matrix and pipeline
   glMatrix = new OpenGLMatrix();
   pipelineProgram = new BasicPipelineProgram();
   pipelineProgram->Init("../openGLHelper-starterCode");
   pipelineProgram->Bind();
   programID = pipelineProgram->GetProgramHandle();
+
+  // 3. Initialize VAO 
+  glGenVertexArrays(1, &vertexArrayObjects);
+  glBindVertexArray(vertexArrayObjects); 
+
+  // 4. Initial Uniform for shader
+  h_textureSampler = glGetUniformLocation(programID, "myTextureSampler");
+
+  // 5. Initialize data
+  initialSpline();
+  initialRail();
+  initialEnvironment();
 }
 
-/* save the screen shot if saveMode == 1 */
-void idleFunc() {
-  if (saveMode == 1) {
-    char fName[] = 
-    {'s', 'a', 'v', 'e', '/', saveScreenShotName1, saveScreenShotName2, saveScreenShotName3, '.', 'j', 'p', 'g', '\0'};
-    ++saveScreenShotName3;
-    if (saveScreenShotName3 > '9') {++saveScreenShotName2; saveScreenShotName3 = '0';}
-    if (saveScreenShotName2 > '9') {++saveScreenShotName1; saveScreenShotName2 = '0'; cout << fName << endl;}
-    if (saveScreenShotName1 > '9') saveScreenShotName1 = '0'; 
-    saveScreenshot(fName);
-  }
-  glutPostRedisplay(); 
+void bindTexture(GLint num, GLuint textureID) {
+  glActiveTexture(num);
+  glUniform1i(h_textureSampler, num - GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
-/* Modify the parameter in head file
- * matLookat: lookat parameter
- * drawArrayMode: GL_LINES or GL_TRIANGLES ..
- */
+GLuint bindBufferPos (GLuint posBufferID) {
+  glBindBuffer(GL_ARRAY_BUFFER, posBufferID);
+  GLuint loc = glGetAttribLocation(programID, "position"); // Position
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void*) 0);
+  return loc;
+}
+
+GLuint bindBufferUV (GLuint uvBufferID) {
+  glBindBuffer(GL_ARRAY_BUFFER, uvBufferID);
+  GLuint loc = glGetAttribLocation(programID, "uv");
+  glEnableVertexAttribArray(loc);
+  glVertexAttribPointer(loc, 2, GL_FLOAT, GL_FALSE, 0, (const void*) 0);
+  return loc;
+}
+
+void drawGround() {
+  bindTexture(GL_TEXTURE0, textureGroundID);
+  GLuint locPos = bindBufferPos(posGroundBuffer);
+  GLuint locUV = bindBufferUV(uvGroundBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posGround.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+}
+
+void drawSky() {
+  bindTexture(GL_TEXTURE0, textureGroundID);
+  GLuint locPos = bindBufferPos(posSkyBuffer);
+  GLuint locUV = bindBufferUV(uvSkyBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posSky.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+}
+
+void drawSpline() {
+  bindTexture(GL_TEXTURE1, textureSplineID);
+  GLuint locPos = bindBufferPos(posSplineBuffer);
+  GLuint locUV = bindBufferUV(uvSplineBuffer);
+  glDrawArrays(GL_LINE_STRIP, 0, posSpline.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+}
+
+void drawRail() {
+  bindTexture(GL_TEXTURE1, textureSplineID);
+  GLuint locPos = bindBufferPos(posRailLeftBuffer);
+  GLuint locUV = bindBufferUV(uvRailBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posRailLeft.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+
+  bindTexture(GL_TEXTURE1, textureSplineID);
+  locPos = bindBufferPos(posRailRightBuffer);
+  locUV = bindBufferUV(uvRailBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posRailRight.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+
+  bindTexture(GL_TEXTURE1, textureRailCrossID);
+  locPos = bindBufferPos(posRailCrossBuffer);
+  locUV = bindBufferUV(uvRailCrossBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posRailCross.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+}
+
+void updateCamera() {
+  int index = countPoint;
+  float T1[3] = {tanSpline[index], tanSpline[index + 1], tanSpline[index + 2]};
+  float N1[3] = { // BO * T1
+    B0[1] * T1[2] - B0[2] * T1[1], 
+    B0[2] * T1[0] - B0[0] * T1[2],
+    B0[0] * T1[1] - B0[1] * T1[0]
+  };
+  float sumN1 = sqrt(N1[0] * N1[0] + N1[1] * N1[1] + N1[2] * N1[2]);
+  N1[0] /= sumN1;
+  N1[1] /= sumN1;
+  N1[2] /= sumN1;
+  float B1[3] = { // T1 * N1
+    T1[1] * N1[2] - T1[2] * N1[1], 
+    T1[2] * N1[0] - T1[0] * N1[2],
+    T1[0] * N1[1] - T1[1] * N1[0]
+  };
+  float sumB1 = sqrt(B1[0] * B1[0] + B1[1] * B1[1] + B1[2] * B1[2]);
+  B1[0] /= sumB1;
+  B1[1] /= sumB1;
+  B1[2] /= sumB1;
+
+  float scaleN = 0.06f;
+  matLookat[0] = posSpline[index] + scaleN * N1[0];
+  matLookat[1] = posSpline[index + 1] + scaleN * N1[1];
+  matLookat[2] = posSpline[index + 2] + scaleN * N1[2];
+  matLookat[3] = posSpline[index] + tanSpline[index] * scaleCamera + scaleN * N1[0];
+  matLookat[4] = posSpline[index + 1] + tanSpline[index + 1] * scaleCamera + scaleN * N1[1];
+  matLookat[5] = posSpline[index + 2] + tanSpline[index + 2] * scaleCamera + scaleN * N1[2];
+  matLookat[6] = N1[0];
+  matLookat[7] = N1[1];
+  matLookat[8] = N1[2];
+  countPoint += speedCamera;
+  if (countPoint >= posSpline.size() - 100)
+      exit(1);
+  N0[0] = N1[0];
+  N0[1] = N1[1];
+  N0[2] = N1[2];
+  B0[0] = B1[0];
+  B0[1] = B1[1];
+  B0[2] = B1[2];
+}
+
+
 void displayFunc() {
   // 1. Clear the display and bind VAO and VBO, set data to VBO
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-  GLuint attributePos = glGetAttribLocation(programID, "position"); // Position
-  glEnableVertexAttribArray(attributePos);
-  glVertexAttribPointer(attributePos, 3, GL_FLOAT, GL_FALSE, 0, (const void*) 0);
-  GLuint attributeCol = glGetAttribLocation(programID, "color"); // Color
-  glEnableVertexAttribArray(attributeCol);
-  glVertexAttribPointer(attributeCol, 4, GL_FLOAT, GL_FALSE, 0, (const void*)(pos.size() * sizeof(GLfloat)));
+
+  // Camera
+  updateCamera();
 
   // 2. Set matrix transformation
   glMatrix->SetMatrixMode(OpenGLMatrix::ModelView); 
@@ -145,10 +497,20 @@ void displayFunc() {
   pipelineProgram->SetProjectionMatrix(p);
   glMatrix->SetMatrixMode(OpenGLMatrix::ModelView);
 
-  // 4. Draw the triangle or lines
-  glDrawArrays(drawArrayMode, 0, pos.size() / 3);
-  glDisableVertexAttribArray(attributePos);
-  glDisableVertexAttribArray(attributeCol);
+  // 4. Draw
+  drawGround();
+  drawSky();
+  drawSpline();
+  drawRail();
+
+  bindTexture(GL_TEXTURE1, textureGroundID);
+  GLuint locPos = bindBufferPos(posSkyBuffer);
+  GLuint locUV = bindBufferUV(uvSkyBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posSky.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+
+  // 5. Swap buffers
   glutSwapBuffers();
 }
 
@@ -161,6 +523,21 @@ void reshapeFunc(int w, int h) {
   glMatrix->LoadIdentity();
   glMatrix->Perspective(matPerspective[0], matPerspective[1], matPerspective[2], matPerspective[3]);
   glMatrix->SetMatrixMode(OpenGLMatrix::ModelView); 
+}
+
+/* save the screen shot if saveMode == 1 */
+
+void idleFunc() {
+  if (saveMode == 1) {
+    char fName[] = 
+    {'s', 'a', 'v', 'e', '/', saveScreenShotName1, saveScreenShotName2, saveScreenShotName3, '.', 'j', 'p', 'g', '\0'};
+    ++saveScreenShotName3;
+    if (saveScreenShotName3 > '9') {++saveScreenShotName2; saveScreenShotName3 = '0';}
+    if (saveScreenShotName2 > '9') {++saveScreenShotName1; saveScreenShotName2 = '0'; cout << fName << endl;}
+    if (saveScreenShotName1 > '9') saveScreenShotName1 = '0'; 
+    saveScreenshot(fName);
+  }
+  glutPostRedisplay(); 
 }
 
 // write a screenshot to the specified filename
