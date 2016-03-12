@@ -84,13 +84,13 @@ GLenum drawArrayMode = GL_LINE_STRIP;
 float matLookat[9] = {0.285714f, -0.685714f, 0.0f, -0.4f, 0.8f, 0.0f, 0.0f, 0.0f, 1.0f}; 
 float matPerspective[4] = {80.0f, windowWidth / windowHeight, 0.00001f, 10.0f}; 
 
-/////////////////////////////////////////////
-///////////////// Parameter /////////////////
-/////////////////////////////////////////////
+////////////////////////////////////////////////////
+///////////////// Parameters /////////////////
+////////////////////////////////////////////////////
 int saveMode = 0; // 0: no save; 1: save screen shot
 char saveScreenShotName1 = '0', saveScreenShotName2 = '0', saveScreenShotName3 = '0';
-int countPoint = 3;
 
+// Global
 BasicPipelineProgram *pipelineProgram;
 GLuint programID;
 OpenGLMatrix *glMatrix;
@@ -103,7 +103,7 @@ GLuint uvGroundBuffer;
 vector<GLfloat> posGround;
 vector<GLfloat> uvGround;
 GLuint textureGroundID;
-const char textureGroundFilename[] = "heightmap/Cubemap.jpg";
+const char textureGroundFilename[] = "heightmap/cubemap3.jpg";
 
 // Sky
 GLuint posSkyBuffer; 
@@ -111,53 +111,73 @@ GLuint uvSkyBuffer;
 vector<GLfloat> posSky;
 vector<GLfloat> uvSky;
 GLuint textureSkyID;
-//const char textureSkyFilename[] = "heightmap/forest512.jpg";
+
 
 // Spline
 Spline *splines; // the spline array 
 int numSplines; // total number of splines 
-float interval = 0.001f;
+float intervalSpline = 0.0005f; // updateCamera = true , this 0.0001f; 0.02f (67)
+double boundSpline = 0.8; // bound spline coord to [-bound, bound]
 float matrixBasic[] = {-0.5, 1.5, -1.5, 0.5, 1.0, -2.5, 2.0, -0.5, -0.5, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0 };
+float matrixControl[12] = {};
 
 vector<GLfloat> posSpline;
 vector<GLfloat> uvSpline;
+vector<GLfloat> TSpline;
+vector<GLfloat> BSpline;
+vector<GLfloat> NSpline;
 GLuint posSplineBuffer; 
 GLuint uvSplineBuffer;
 GLuint textureSplineID;
-const char textureSplineFilename[] = "heightmap/USC256.jpg";
-vector<GLfloat> tanSpline;
+const char textureSplineFilename[] = "heightmap/iron3.jpg";
 
+float tempV[3] = {0, 1, 0};
+float maxSplineZ = -2.0;
 
-float B0[3] = {};
-float N0[3] = {};
-
+// Rail
 vector<GLfloat> posRailLeft;
 vector<GLfloat> posRailRight;
 vector<GLfloat> uvRail;
-float scaleRail = 0.005f;
-float centerRail = 0.05f;
 GLuint posRailLeftBuffer;
 GLuint posRailRightBuffer;
 GLuint uvRailBuffer;
 
-int speedCamera = 60;
-float scaleCamera = 0.05;
+float scaleRailT = 0.0f;
+float scaleRailN = 0.005f;
+float scaleRailB = 0.005f;
+float centerRail = 0.03f;
 
-vector<GLfloat> posRailCross;
-vector<GLfloat> uvRailCross;
-GLuint posRailCrossBuffer;
-GLuint uvRailCrossBuffer;
-float scaleNCross = 0.005f;
-float scaleBCross = 0.05f;
-float scaleTCross = 0.005f;
+// Rail cross
+vector<GLfloat> posCross;
+vector<GLfloat> uvCross;
+GLuint posCrossBuffer;
+GLuint uvCrossBuffer;
+GLuint textureCrossID;
+const char textureCrossFilename[] = "heightmap/wood3.jpg";
 
-GLuint textureRailCrossID;
-const char textureRailCrossFilename[] = "heightmap/coral.jpg";
+float scaleCrossT = 0.005f;
+float scaleCrossN = 0.005f;
+float scaleCrossB = 0.05f;
+int distanceCross = 30;
+int lengthCross = 6;
+float centerCrossN = 0.01f;
+
+// Camera
+bool updateCameraMode = 1; // 1 slow
+float speedCamera = 1;
+float scaleCameraT = 0.1f;
+float scaleCameraN = 0.06f;
+float minSpeed = 0.1;
+
+float countPoint = 0; // 3 * interger
+int waitingCamera = 0;
+int waitingCameraMax = 100;
 
 ///////////////////////////////////////////////
 ///////////////// DECLARATION /////////////////
 ///////////////////////////////////////////////
 /* my helper functions */
+/* normalizae spline coord to the [-boundSpline, boundSpline] box */
 void normalizeSpline();
 void initialSpline();
 void initialEnvironment();
