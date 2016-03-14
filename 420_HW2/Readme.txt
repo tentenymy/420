@@ -1,83 +1,96 @@
+Subject 	: CSCI420 - Computer Graphics 
+Assignment 2: Simulating a Roller Coaster
+Author		: Meiyi Yang
+USC ID 		: 6761040585
 
-  CSCI 420 Computer Graphics, USC
-  Assignment 1: Height Fields
-  C++ starter code
-  
-  Student username: meiyiyan@usc.edu
-  Name: Meiyi Yang
+Description: In this assignment, we use Catmull-Rom splines along with OpenGL texture mapping to create a roller coaster simulation.
+
+Core Credit Features: (Answer these Questions with Y/N; you can also insert comments as appropriate)
+======================
+
+1. Uses OpenGL core profile, version 3.2 or higher - [Y]
+
+2. Completed all Levels:
+  Level 1 : -[Y]
+  level 2 : -[Y]
+  Level 3 : -[Y]
+  Level 4 : -[Y]
+  Level 5 : -[Y]
+
+3. Used Catmull-Rom Splines to render the Track - [Y]
+
+4. Rendered a Rail Cross Section -[Y]
+
+5. Rendered the camera at a reasonable speed in a continuous path/orientation -[Y]
+
+6. Run at interactive frame rate (>15fps at 1280 x 720) -[Y]
+
+7. Understandably written, well commented code -[Y]
+
+8. Attached an Animation folder containing not more than 1000 screenshots -[Y] “/hw1-starterCode/save/
+
+9. Attached this ReadMe File -[Y] “/Readme.txt”
+
+Extra Credit Features: (Answer these Questions with Y/N; you can also insert comments as appropriate)
+======================
+
+1. Render a T-shaped rail cross section -[Y]
+
+2. Render a Double Rail -[Y]
+
+3. Made the track circular and closed it with C1 continuity -[Y]
+
+4. Added OpenGl lighting - [N]
+
+5. Any Additional Scene Elements? (list them here)
+	Add a “Fight On TROJAN” cube at the beginning of the rail-coaster.
+
+6. Generate track from several sequences of splines - [N]
+
+7. Draw splines using recursive subdivision -[Y]
+
+8. Modify velocity with which the camera moves -[Y]
+
+9. Create tracks that mimic a real world coaster - [N]
+
+10. Render environment in a better manner - [N]
+
+Additional Features: (Please document any additional features you may have implemented other than the ones described above)
+1. the Camera will waiting 4 seconds before it moves, and it will back to the beginning point after the rail is end.
+2. the animation submitted used a new “.sp” file “rollerCoaster2.sp” writing by myself
+
+Open-Ended Problems: (Please document approaches to any open-ended problems that you have tackled)
+1.
+2.
+
+Keyboard/Mouse controls: (Please document Keyboard/Mouse controls if any)
+1.
+2.
+
+Names of the .cpp files you made changes to:
+1. hw2.cpp
+2.
+
+Comments : (If any)
+// Compile and Run:
+make clean
+make
+./hw2 track.txt
+
+// Files added
+hw2.h 
+hw2.cpp
+textures in heightmap/
 
 
-*****************************
-****** COMPILE AND RUN ******
-*****************************
-
-> unzip assign1_coreOpenGL_starterCode.zip
-> cd hw1-starterCode
-> make
-> ./hw1 heightmap/OhioPyle-512.jpg
+// Parameter modification
+all the parameters are setting in hw2.h
+UpdateCameraMode = 0 : stop the camera update
+speedCamera: set the speedCamera
 
 
-***********************
-****** ANIMATION ******
-***********************
-
-JPEG frames are in the folder:
-> cd assign1_coreOpenGL_starterCode/hw1-starterCode/save/
-
-This animation is based on a input color image ‘sea512.jpg’
 
 
-*********************
-****** DEFALUT ******
-*********************
-Case 1(Default):
-
-Image size: maximum is 768 * 768
-Image type: color or grayscale
-Render type: Points or Lines or Triangles(default)
-	(Set renderMode to modify:
-	Points: renderMode = 0; Lines: renderMode = 1; Triangles: renderMode = 2;)
-Scene: rotating
-Result color: gradient from black to yellow depends on its depth.
-Setting:
-	Set hw1.cpp (default):
-		int renderMode = 2;
-		int colorMode = 0;	
-		int saveMode = 0; 
-	Set basic.vertexShader.glsl (default): 
-		int mode = 0; 
 
 
-**************************
-****** EXTRA CREDIT ******
-**************************
-1. Support color (ImageIO::getBytesPerPixel == 3) in input images
-Case 1:Default case can support color image
-Case 2: Render color image and colored it by itself color
-Image type: color
-Image size: maximum 768 * 768
-Render type: Point / Line / Triangle
-Result color: color of the image
-Setting:
-	Set hw1.cpp:
-		int renderMode = 2; 
-		int colorMode = 1;
-		int saveMode = 0;
-	Set basic.vertexShader.glsl: 
-		int mode = 1; 
-
-
-2. Color the vertices based on color values taken from another image of equal size. 
-Case 3: 
-Image type: grayscale or color
-Image size: 128 * 128, 256 * 256, 512 * 512, 768 * 768
-Render type: Point / Line / Triangle
-Result color: color of another image (e.g.:USC512.jpg)
-Setting:
-	Set hw1.cpp:
-		int renderMode = 2; 
-		int colorMode = 2;
-		int saveMode = 0;
-	Set basic.vertexShader.glsl: 
-		int mode = 1; 
 

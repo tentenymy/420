@@ -1,10 +1,8 @@
 /*
-  CSCI 420 Computer Graphics, USC
-  Assignment 1: Height Fields
-  C++ starter code
-  
-  Student username: meiyiyan@usc.edu
-  Name: Meiyi Yang
+Subject   : CSCI420 - Computer Graphics 
+Assignment 2: Simulating a Roller Coaster
+Author    : Meiyi Yang
+USC ID    : 6761040585
 */
 
 #include <iostream>
@@ -68,13 +66,7 @@ int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
 
 float colorClear[4] = {0.0f, 0.0f, 0.4f, 0.0f}; // glClearColor();
-//float matLookat[9] = {0.0f, 20.0f, -3.0f, 0.0f, 20.0f, 0.0f, 1.0f, 1.0f, 0.0f}; // glMatrix->LookAt();
-//float matPerspective[4] = {170.0f, windowWidth / windowHeight, 0.1f, 200.0f}; 
 GLenum drawArrayMode = GL_LINE_STRIP;
-
-//float matLookat[9] = {0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0}; // glMatrix->LookAt();
-//float matPerspective[4] = {90.0f, 1.0f, 0.1f, 100.0f}; 
-//GLenum drawArrayMode = GL_TRIANGLES; // glDrawArrays();
 
 // OUTSIDE the box
 //float matLookat[9] = {0.0f, -3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}; 
@@ -84,9 +76,11 @@ GLenum drawArrayMode = GL_LINE_STRIP;
 float matLookat[9] = {0.285714f, -0.685714f, 0.0f, -0.4f, 0.8f, 0.0f, 0.0f, 0.0f, 1.0f}; 
 float matPerspective[4] = {80.0f, windowWidth / windowHeight, 0.00001f, 10.0f}; 
 
+
 ////////////////////////////////////////////////////
 ///////////////// Parameters /////////////////
 ////////////////////////////////////////////////////
+// Save Screen Shot
 int saveMode = 0; // 0: no save; 1: save screen shot
 char saveScreenShotName1 = '0', saveScreenShotName2 = '0', saveScreenShotName3 = '0';
 
@@ -110,17 +104,11 @@ GLuint posSkyBuffer;
 GLuint uvSkyBuffer;
 vector<GLfloat> posSky;
 vector<GLfloat> uvSky;
-GLuint textureSkyID;
-
+GLuint textureSkyID; //also textureGroundFilename
 
 // Spline
 Spline *splines; // the spline array 
 int numSplines; // total number of splines 
-float intervalSpline = 0.0005f; // updateCamera = true , this 0.0001f; 0.02f (67)
-double boundSpline = 0.8; // bound spline coord to [-bound, bound]
-float matrixBasic[] = {-0.5, 1.5, -1.5, 0.5, 1.0, -2.5, 2.0, -0.5, -0.5, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0 };
-float matrixControl[12] = {};
-
 vector<GLfloat> posSpline;
 vector<GLfloat> uvSpline;
 vector<GLfloat> TSpline;
@@ -129,23 +117,34 @@ vector<GLfloat> NSpline;
 GLuint posSplineBuffer; 
 GLuint uvSplineBuffer;
 GLuint textureSplineID;
-const char textureSplineFilename[] = "heightmap/iron3.jpg";
-
-float tempV[3] = {0, 1, 0};
+const char textureSplineFilename[] = "heightmap/iron4.jpg";
+float matrixBasic[] = {-0.5, 1.5, -1.5, 0.5, 1.0, -2.5, 2.0, -0.5, -0.5, 0.0, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0 };
+float matrixControl[12] = {};
 float maxSplineZ = -2.0;
+float intervalSpline = 0.0005f; // 0.0001f / 0.02f (test)
+double boundSpline = 0.5; // bounded spline coord to [-bound, bound]
+float tempV[3] = {0, 1, 0}; // N0 = T0 * V
 
 // Rail
-vector<GLfloat> posRailLeft;
-vector<GLfloat> posRailRight;
+vector<GLfloat> posRailLeftDown;
+vector<GLfloat> posRailRightDown;
 vector<GLfloat> uvRail;
-GLuint posRailLeftBuffer;
-GLuint posRailRightBuffer;
+GLuint posRailLeftDownBuffer;
+GLuint posRailRightDownBuffer;
 GLuint uvRailBuffer;
-
-float scaleRailT = 0.0f;
+float scaleRailT = 0.0f; 
 float scaleRailN = 0.005f;
-float scaleRailB = 0.005f;
-float centerRail = 0.03f;
+float scaleRailB = 0.010f;
+float centerRailB = 0.03f;
+
+// Rail T-shaped
+vector<GLfloat> posRailLeftUp;
+vector<GLfloat> posRailRightUp;
+GLuint posRailLeftUpBuffer;
+GLuint posRailRightUpBuffer;
+float centerRailUpN = 0.0125f;
+float scaleRailUpB = 0.0025f;
+float scaleRailUpN = 0.0075f;
 
 // Rail cross
 vector<GLfloat> posCross;
@@ -154,39 +153,64 @@ GLuint posCrossBuffer;
 GLuint uvCrossBuffer;
 GLuint textureCrossID;
 const char textureCrossFilename[] = "heightmap/wood3.jpg";
-
 float scaleCrossT = 0.005f;
 float scaleCrossN = 0.005f;
 float scaleCrossB = 0.05f;
-int distanceCross = 30;
-int lengthCross = 6;
+int distanceCross = 12;
+int lengthCross = 4;
 float centerCrossN = 0.01f;
 
 // Camera
-bool updateCameraMode = 1; // 1 slow
-float speedCamera = 1;
+bool UpdateCameraMode = 1; // 1: update camera 0: no update
+float speedCamera = 2;
 float scaleCameraT = 0.1f;
 float scaleCameraN = 0.06f;
-float minSpeed = 0.1;
-
-float countPoint = 0; // 3 * interger
+float minSpeed = 0.1; // make sure maxHeight position also can move
+float countPoint = 0; // integer 
 int waitingCamera = 0;
-int waitingCameraMax = 100;
+int waitingCameraMax = 60; // waiting frames
+
+// Cube
+GLuint posCubeBuffer; 
+GLuint uvCubeBuffer;
+vector<GLfloat> posCube;
+vector<GLfloat> uvCube;
+GLuint textureCubeID;
+const char textureCubeFilename[] = "heightmap/cubemap_fighton.jpg";
+float scaleCube = 0.05f;
+float centerCubeX = 0.1f;
+float centerCubeY = -0.35f;
+float centerCubeZ = 0.71f;
 
 ///////////////////////////////////////////////
 ///////////////// DECLARATION /////////////////
 ///////////////////////////////////////////////
 /* my helper functions */
-/* normalizae spline coord to the [-boundSpline, boundSpline] box */
+// Initialization 
 void normalizeSpline();
+vector<float> getMatrixUBC(float u);
+vector<float> getMatrixTanUBC(float u);
+void subdivideMatrixU(float u0, float u1);
 void initialSpline();
+float getRailPos(float center, float scaleT, float scaleN, float scaleB, float T, float N, float B);
+void initialRail();
+void initialRailUp(); 
+void initialCross();
 void initialEnvironment();
+void initialCube(); 
+void initialCamera();
+void printDetail();
+
+// Display
 void bindTexture(GLint, GLuint);
 GLuint bindBufferPos(GLuint);
 GLuint bindBufferUV(GLuint);
 void drawGround();
 void drawSky();
+void drawCube();
 void drawSpline();
+void drawRail();
+void UpdateCamera();
 
 /* HW1 & HW2 need to implement */
 void initScene(int argc, char *argv[]);
@@ -206,9 +230,9 @@ int loadSplines(char * argv);
 int initTexture(const char * imageFilename, GLuint textureHandle);
 
 
-////////////////////////////////////////
-///////////////// DATA /////////////////
-////////////////////////////////////////
+/////////////////////////////////////////////
+///////////////// CUBE DATA /////////////////
+/////////////////////////////////////////////
 GLfloat cubemapPos[] = {
   -1.0f, 1.0f, -1.0f, // Ground
   1.0f, 1.0f, -1.0f,

@@ -1,4 +1,11 @@
-﻿#include "hw2.h"
+﻿/*
+Subject   : CSCI420 - Computer Graphics 
+Assignment 2: Simulating a Roller Coaster
+Author    : Meiyi Yang
+USC ID    : 6761040585
+*/
+
+#include "hw2.h"
 using namespace std;
 
 ////////////////////////////////////////////
@@ -39,7 +46,6 @@ void normalizeSpline() {
     }
   }
 }
-
 
 vector<float> getMatrixUBC(float u) {
   float matrixU[4] = {u * u * u, u * u, u, 1.0f}, matrixUB[4] = {};
@@ -98,7 +104,7 @@ void subdivideMatrixU(float u0, float u1) {
     return;
   }
 }
-/* Initial Spline line: intervalSpline */
+
 void initialSpline() {
   // 1. Normalization the spline
   normalizeSpline();
@@ -164,35 +170,34 @@ void initialSpline() {
   glBufferData(GL_ARRAY_BUFFER, uvSpline.size() * sizeof(GLfloat), &uvSpline[0], GL_STATIC_DRAW);
 }
 
-/* Initial Rail (left, right, cross) */
 float getRailPos(float center, float scaleT, float scaleN, float scaleB, float T, float N, float B) {
   return center + scaleT * T + scaleB * B + scaleN * N;
 }
 
 void initialRail() {
   // 2. Initial four of eight vertexs for rail Left / Right / Cross and push to the vector
-  float vertexLeft[8][3] = {}, vertexRight[8][3] = {};
+  float vertexLeftDown[8][3] = {}, vertexRightDown[8][3] = {};
   for (int j = 0; j < 3; ++j) {
-    vertexLeft[0][j] = getRailPos(posSpline[j] + centerRail * BSpline[j], scaleRailT, -scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
-    vertexRight[0][j] = getRailPos(posSpline[j] - centerRail * BSpline[j], scaleRailT, -scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexLeftDown[0][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j], scaleRailT, -scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightDown[0][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j], scaleRailT, -scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
   }
   for (int j = 0; j < 3; ++j) {
-    vertexLeft[1][j] = getRailPos(posSpline[j] + centerRail * BSpline[j], scaleRailT, scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
-    vertexRight[1][j] = getRailPos(posSpline[j] - centerRail * BSpline[j], scaleRailT, scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexLeftDown[1][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j], scaleRailT, scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightDown[1][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j], scaleRailT, scaleRailN, scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
   }
   for (int j = 0; j < 3; ++j) {
-    vertexLeft[2][j] = getRailPos(posSpline[j] + centerRail * BSpline[j], scaleRailT, scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
-    vertexRight[2][j] = getRailPos(posSpline[j] - centerRail * BSpline[j], scaleRailT, scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexLeftDown[2][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j], scaleRailT, scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightDown[2][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j], scaleRailT, scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
   }
   for (int j = 0; j < 3; ++j) {
-    vertexLeft[3][j] = getRailPos(posSpline[j] + centerRail * BSpline[j], scaleRailT, -scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
-    vertexRight[3][j] = getRailPos(posSpline[j] - centerRail * BSpline[j], scaleRailT, -scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexLeftDown[3][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j], scaleRailT, -scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightDown[3][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j], scaleRailT, -scaleRailN, -scaleRailB, TSpline[j], NSpline[j], BSpline[j]);
   }
   int indexList1[4] = {1, 2, 0, 3};
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
-      posRailLeft.push_back(vertexLeft[indexList1[i]][j]);
-      posRailRight.push_back(vertexRight[indexList1[i]][j]);
+      posRailLeftDown.push_back(vertexLeftDown[indexList1[i]][j]);
+      posRailRightDown.push_back(vertexRightDown[indexList1[i]][j]);
     }
   }
   
@@ -220,14 +225,14 @@ void initialRail() {
     
     // 3.2 Vertex4-7 Left / Right / Cross
     for (int j = 0; j < 3; ++j) {
-      vertexLeft[4][j] = getRailPos(posSpline[i * 3 + j] + centerRail * B1[j], scaleRailT, -scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
-      vertexLeft[5][j] = getRailPos(posSpline[i * 3 + j] + centerRail * B1[j], scaleRailT, scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
-      vertexLeft[6][j] = getRailPos(posSpline[i * 3 + j] + centerRail * B1[j], scaleRailT, scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
-      vertexLeft[7][j] = getRailPos(posSpline[i * 3 + j] + centerRail * B1[j], scaleRailT, -scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
-      vertexRight[4][j] = getRailPos(posSpline[i * 3 + j] - centerRail * B1[j], scaleRailT, -scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
-      vertexRight[5][j] = getRailPos(posSpline[i * 3 + j] - centerRail * B1[j], scaleRailT, scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
-      vertexRight[6][j] = getRailPos(posSpline[i * 3 + j] - centerRail * B1[j], scaleRailT, scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
-      vertexRight[7][j] = getRailPos(posSpline[i * 3 + j] - centerRail * B1[j], scaleRailT, -scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
+      vertexLeftDown[4][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j], scaleRailT, -scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
+      vertexLeftDown[5][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j], scaleRailT, scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
+      vertexLeftDown[6][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j], scaleRailT, scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
+      vertexLeftDown[7][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j], scaleRailT, -scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
+      vertexRightDown[4][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j], scaleRailT, -scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
+      vertexRightDown[5][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j], scaleRailT, scaleRailN, scaleRailB, T1[j], N1[j], B1[j]);
+      vertexRightDown[6][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j], scaleRailT, scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
+      vertexRightDown[7][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j], scaleRailT, -scaleRailN, -scaleRailB, T1[j], N1[j], B1[j]);
     }
 
     // 3.3 push to vector pos Left / Right /Cross
@@ -238,36 +243,128 @@ void initialRail() {
     };
     for (int k = 0; k < sizeof(indexList2) / sizeof(int); ++k) {
       for (int j = 0; j < 3; ++j) {
-        posRailLeft.push_back(vertexLeft[indexList2[k]][j]);
-        posRailRight.push_back(vertexRight[indexList2[k]][j]);
+        posRailLeftDown.push_back(vertexLeftDown[indexList2[k]][j]);
+        posRailRightDown.push_back(vertexRightDown[indexList2[k]][j]);
       }
     }
 
     // 3.4 store back to 0
     for (int k = 0; k < 4; k++) {
       for (int j = 0; j < 3; j++) {
-        vertexLeft[k][j] = vertexLeft[k + 4][j];
-        vertexRight[k][j] = vertexRight[k + 4][j];
+        vertexLeftDown[k][j] = vertexLeftDown[k + 4][j];
+        vertexRightDown[k][j] = vertexRightDown[k + 4][j];
       }
     }
   }
 
   // 4. Initial uvRail and uvCross
-  GLfloat tempUV[] = {0.8, 0.2, 0.2, 0.2, 0.2, 0.8, 0.2, 0.2, 0.2, 0.8, 0.8, 0.8};
-  for (int i = 0; i < posRailLeft.size(); i++) {
-    uvRail.push_back(tempUV[i % 6]);
-  }
+  GLfloat tempUV[] = {0.2, 0.2, 0.8, 0.2, 0.2, 0.8, 0.8, 0.2, 0.2, 0.8, 0.8, 0.8};
+  for (int i = 0; i < posRailLeftDown.size(); i++) {
+    uvRail.push_back(tempUV[i % 12]);
+  }  
 
   // 6. Link vbo with pos RailLeft / Right
-  glGenBuffers(1, &posRailLeftBuffer);  // posRailLeft
-  glBindBuffer(GL_ARRAY_BUFFER, posRailLeftBuffer);  
-  glBufferData(GL_ARRAY_BUFFER, posRailLeft.size() * sizeof(GLfloat) , &posRailLeft[0], GL_STATIC_DRAW); 
-  glGenBuffers(1, &posRailRightBuffer);  // posRailRight
-  glBindBuffer(GL_ARRAY_BUFFER, posRailRightBuffer);  
-  glBufferData(GL_ARRAY_BUFFER, posRailRight.size() * sizeof(GLfloat) , &posRailRight[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &posRailLeftDownBuffer);  // posRailLeft
+  glBindBuffer(GL_ARRAY_BUFFER, posRailLeftDownBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailLeftDown.size() * sizeof(GLfloat) , &posRailLeftDown[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &posRailRightDownBuffer);  // posRailRight
+  glBindBuffer(GL_ARRAY_BUFFER, posRailRightDownBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailRightDown.size() * sizeof(GLfloat) , &posRailRightDown[0], GL_STATIC_DRAW); 
   glGenBuffers(1, &uvRailBuffer); // uvRail
   glBindBuffer(GL_ARRAY_BUFFER, uvRailBuffer);
   glBufferData(GL_ARRAY_BUFFER, uvRail.size() * sizeof(GLfloat), &uvRail[0], GL_STATIC_DRAW);
+}
+
+void initialRailUp() {
+  // 2. Initial four of eight vertexs for rail Left / Right / Cross and push to the vector
+  float vertexLeftUp[8][3] = {}, vertexRightUp[8][3] = {};
+  for (int j = 0; j < 3; ++j) {
+    vertexLeftUp[0][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, -scaleRailUpN, scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightUp[0][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, -scaleRailN, scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+  }
+  for (int j = 0; j < 3; ++j) {
+    vertexLeftUp[1][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, scaleRailUpN, scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightUp[1][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, scaleRailUpN, scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+  }
+  for (int j = 0; j < 3; ++j) {
+    vertexLeftUp[2][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, scaleRailUpN, -scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightUp[2][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, scaleRailUpN, -scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+  }
+  for (int j = 0; j < 3; ++j) {
+    vertexLeftUp[3][j] = getRailPos(posSpline[j] + centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, -scaleRailUpN, -scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+    vertexRightUp[3][j] = getRailPos(posSpline[j] - centerRailB * BSpline[j] + centerRailUpN * NSpline[j], scaleRailT, -scaleRailUpN, -scaleRailUpB, TSpline[j], NSpline[j], BSpline[j]);
+  }
+  int indexList1[4] = {1, 2, 0, 3};
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      posRailLeftUp.push_back(vertexLeftUp[indexList1[i]][j]);
+      posRailRightUp.push_back(vertexRightUp[indexList1[i]][j]);
+    }
+  }
+  
+  // 3. Initial pos vector for Left / Right / Cross
+  for (int i = 1; i < posSpline.size() / 3; ++i) {
+    // 3.1 N1 = B0 * T1, B1 = T1 * N1;
+    double B0[3] = {BSpline[i * 3 - 3], BSpline[i * 3 - 2], BSpline[i * 3 - 1]};
+    double T1[3] = {TSpline[i * 3], TSpline[i * 3 + 1], TSpline[i * 3 + 2]};
+    double N1[3] = {B0[1] * T1[2] - B0[2] * T1[1], B0[2] * T1[0] - B0[0] * T1[2], B0[0] * T1[1] - B0[1] * T1[0]};
+    double tempSumN = N1[0] * N1[0] + N1[1] * N1[1] + N1[2] * N1[2];
+    tempSumN = tempSumN == 0 ? 0.0 : 1.0 / sqrt(tempSumN);
+    N1[0] *= tempSumN;
+    N1[1] *= tempSumN;
+    N1[2] *= tempSumN;
+    double B1[3] = {T1[1] * N1[2] - T1[2] * N1[1], T1[2] * N1[0] - T1[0] * N1[2], T1[0] * N1[1] - T1[1] * N1[0]};
+    double tempSumB = B1[0] * B1[0] + B1[1] * B1[1] + B1[2] * B1[2];
+    tempSumB = tempSumB == 0 ? 0.0 : 1.0 / sqrt(tempSumB);
+    B1[0] *= tempSumB;
+    B1[1] *= tempSumB;
+    B1[2] *= tempSumB;
+    for (int j = 0; j < 3; ++j) {
+      NSpline.push_back((float)N1[j]);
+      BSpline.push_back((float)B1[j]);
+    }
+    
+    // 3.2 Vertex4-7 Left / Right / Cross
+    for (int j = 0; j < 3; ++j) {
+      vertexLeftUp[4][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, -scaleRailUpN, scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexLeftUp[5][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, scaleRailUpN, scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexLeftUp[6][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, scaleRailUpN, -scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexLeftUp[7][j] = getRailPos(posSpline[i * 3 + j] + centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, -scaleRailUpN, -scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexRightUp[4][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, -scaleRailUpN, scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexRightUp[5][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, scaleRailUpN, scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexRightUp[6][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, scaleRailUpN, -scaleRailUpB, T1[j], N1[j], B1[j]);
+      vertexRightUp[7][j] = getRailPos(posSpline[i * 3 + j] - centerRailB * B1[j] + centerRailUpN * N1[j], scaleRailT, -scaleRailUpN, -scaleRailUpB, T1[j], N1[j], B1[j]);
+    }
+
+    // 3.3 push to vector pos Left / Right /Cross
+    int indexList2[] = {
+      0, 1, 3, 1, 3, 2, 3, 2, 7, 2, 7, 6,
+      7, 6, 4, 6, 4, 5, 4, 5, 0, 5, 0, 1, 
+      1, 2, 5, 2, 5, 6, 3, 0, 7, 0, 7, 4
+    };
+    for (int k = 0; k < sizeof(indexList2) / sizeof(int); ++k) {
+      for (int j = 0; j < 3; ++j) {
+        posRailLeftUp.push_back(vertexLeftUp[indexList2[k]][j]);
+        posRailRightUp.push_back(vertexRightUp[indexList2[k]][j]);
+      }
+    }
+
+    // 3.4 store back to 0
+    for (int k = 0; k < 4; k++) {
+      for (int j = 0; j < 3; j++) {
+        vertexLeftUp[k][j] = vertexLeftUp[k + 4][j];
+        vertexRightUp[k][j] = vertexRightUp[k + 4][j];
+      }
+    }
+  }
+
+  // 6. Link vbo with pos RailLeft / Right
+  glGenBuffers(1, &posRailLeftUpBuffer);  // posRailLeft
+  glBindBuffer(GL_ARRAY_BUFFER, posRailLeftUpBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailLeftUp.size() * sizeof(GLfloat) , &posRailLeftUp[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &posRailRightUpBuffer);  // posRailRight
+  glBindBuffer(GL_ARRAY_BUFFER, posRailRightUpBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posRailRightUp.size() * sizeof(GLfloat) , &posRailRightUp[0], GL_STATIC_DRAW); 
 }
 
 void initialCross() {
@@ -351,6 +448,55 @@ void initialEnvironment() {
   glBufferData(GL_ARRAY_BUFFER, uvSky.size() * sizeof(GLfloat), &uvSky[0], GL_STATIC_DRAW);
 }
 
+void initialCube() {
+  // 1. Initial data for sky and ground
+  for (int i = 0; i < sizeof(cubemapPos) / sizeof(GLfloat); ++i) 
+    posCube.push_back(cubemapPos[i] * scaleCube);
+  for (int i = 0; i < sizeof(cubemapUV) / sizeof(GLfloat); ++i) 
+    uvCube.push_back(cubemapUV[i]);
+  for (int i = 0; i < posCube.size() / 3; ++i) {
+    posCube[3 * i] += centerCubeX;
+    posCube[3 * i + 1] += centerCubeY;
+    posCube[3 * i + 2] += centerCubeZ;
+  }
+
+  // 2. Load cube map
+  glGenTextures(1, &textureCubeID);
+  int code = initTexture(textureCubeFilename, textureCubeID);
+  if (code != 0) {
+    printf("Error loading the texture image. \n");
+    exit(EXIT_FAILURE);
+  }
+
+  // 3. Link vbo for ground and sky
+  glGenBuffers(1, &posCubeBuffer); // posGround
+  glBindBuffer(GL_ARRAY_BUFFER, posCubeBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posCube.size() * sizeof(GLfloat), &posCube[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &uvCubeBuffer); // uvGround
+  glBindBuffer(GL_ARRAY_BUFFER, uvCubeBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvCube.size() * sizeof(GLfloat), &uvCube[0], GL_STATIC_DRAW);
+  glGenBuffers(1, &posCubeBuffer); // posSky
+  glBindBuffer(GL_ARRAY_BUFFER, posCubeBuffer);  
+  glBufferData(GL_ARRAY_BUFFER, posCube.size() * sizeof(GLfloat), &posCube[0], GL_STATIC_DRAW); 
+  glGenBuffers(1, &uvCubeBuffer); // uvSky
+  glBindBuffer(GL_ARRAY_BUFFER, uvCubeBuffer);
+  glBufferData(GL_ARRAY_BUFFER, uvCube.size() * sizeof(GLfloat), &uvCube[0], GL_STATIC_DRAW);
+}
+
+void initialCamera() {
+  if (NSpline.size() > 0) {
+    matLookat[0] = posSpline[0] + scaleCameraN * NSpline[0];
+    matLookat[1] = posSpline[1] + scaleCameraN * NSpline[1];
+    matLookat[2] = posSpline[2] + scaleCameraN * NSpline[2];
+    matLookat[3] = posSpline[0] + TSpline[0] * scaleCameraT + scaleCameraN * NSpline[0];
+    matLookat[4] = posSpline[1] + TSpline[1] * scaleCameraT + scaleCameraN * NSpline[1];
+    matLookat[5] = posSpline[2] + TSpline[2] * scaleCameraT + scaleCameraN * NSpline[2];
+    matLookat[6] = NSpline[0];
+    matLookat[7] = NSpline[1];
+    matLookat[8] = NSpline[2];
+  }
+}
+
 void printDetail() {
   cout << endl << "********* Detail *********" << endl;
   cout << "Ground: pos/uv: " << posGround.size() << "/" << uvGround.size() << endl;
@@ -364,7 +510,7 @@ void printDetail() {
   int count = 0;
   cout << endl << "N list: " << endl;
   for (int i = 0; i < NSpline.size() / 3; ++i) {
-    if (i < 80){
+    if (i < 40){
        cout << NSpline[i * 3] << " \t " << NSpline[i * 3 + 1] << " \t " << NSpline[i * 3 + 2] << "\t";
        cout << NSpline[i * 3] * NSpline[i * 3] + NSpline[i * 3 + 1] * NSpline[i * 3 + 1] + NSpline[i * 3 + 2] * NSpline[i * 3 + 2] << endl;
     }
@@ -374,19 +520,20 @@ void printDetail() {
   }
   cout << endl << "B list: " << endl;
   for (int i = 0; i < BSpline.size() / 3; ++i) {
-    if (i < 80){
+    if (i < 40){
        cout << BSpline[i * 3] << " \t " << BSpline[i * 3 + 1] << " \t " << BSpline[i * 3 + 2] << "\t";
        cout << BSpline[i * 3] * BSpline[i * 3] + BSpline[i * 3 + 1] * BSpline[i * 3 + 1] + BSpline[i * 3 + 2] * BSpline[i * 3 + 2] << endl;
     }
   }
   cout << endl << "Spline list: " << endl;
   for (int i = 0; i < posSpline.size() / 3; ++i) {
-    //if (i < 80){
+    if (i < 40){
        cout << posSpline[i * 3] << " \t " << posSpline[i * 3 + 1] << " \t " << posSpline[i * 3 + 2] << endl;
-    //}
+    }
   }
   cout << "Count negative: " << count << " / " << NSpline.size() << endl << endl;
-  cout << "Rail: posLeft/posRight/uv: " << posRailLeft.size() << "/" << posRailRight.size() << "/" << uvRail.size() << endl;
+  cout << "Rail: posLeftDown/posRightDown/uv: " << posRailLeftDown.size() << "/" << posRailRightDown.size() << "/" << uvRail.size() << endl;
+  cout << "Rail: posLeftUp/posRightUp: " << posRailLeftUp.size() << "/" << posRailRightUp.size() << endl;
   cout << "Cross: pos/uv: " << posCross.size() << "/" << uvCross.size() << endl;
   cout << endl;
 }
@@ -411,13 +558,16 @@ void initScene(int argc, char *argv[]) {
   h_textureSampler = glGetUniformLocation(programID, "myTextureSampler");
 
   // 5. Initialize data
+  initialEnvironment();
+  initialCube();
   initialSpline();
   initialRail();
-  initialEnvironment();
+  initialRailUp();
   initialCross();
+  initialCamera();
 
   // 6. Print Detail
-  printDetail();
+  //printDetail();
 }
 
 /////////////////////////////////////
@@ -463,6 +613,15 @@ void drawSky() {
   glDisableVertexAttribArray(locUV);
 }
 
+void drawCube() {
+  bindTexture(GL_TEXTURE2, textureCubeID);
+  GLuint locPos = bindBufferPos(posCubeBuffer);
+  GLuint locUV = bindBufferUV(uvCubeBuffer);
+  glDrawArrays(GL_TRIANGLES, 0, posCube.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+}
+
 void drawSpline() {
   bindTexture(GL_TEXTURE1, textureSplineID);
   GLuint locPos = bindBufferPos(posSplineBuffer);
@@ -474,16 +633,30 @@ void drawSpline() {
 
 void drawRail() {
   bindTexture(GL_TEXTURE1, textureSplineID);
-  GLuint locPos = bindBufferPos(posRailLeftBuffer);
+  GLuint locPos = bindBufferPos(posRailLeftDownBuffer);
   GLuint locUV = bindBufferUV(uvRailBuffer);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailLeft.size() / 3);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailLeftDown.size() / 3);
   glDisableVertexAttribArray(locPos);
   glDisableVertexAttribArray(locUV);
 
   bindTexture(GL_TEXTURE1, textureSplineID);
-  locPos = bindBufferPos(posRailRightBuffer);
+  locPos = bindBufferPos(posRailRightDownBuffer);
   locUV = bindBufferUV(uvRailBuffer);
-  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailRight.size() / 3);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailRightDown.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+
+  bindTexture(GL_TEXTURE1, textureSplineID);
+  locPos = bindBufferPos(posRailLeftUpBuffer);
+  locUV = bindBufferUV(uvRailBuffer);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailLeftUp.size() / 3);
+  glDisableVertexAttribArray(locPos);
+  glDisableVertexAttribArray(locUV);
+
+  bindTexture(GL_TEXTURE1, textureSplineID);
+  locPos = bindBufferPos(posRailRightUpBuffer);
+  locUV = bindBufferUV(uvRailBuffer);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, posRailRightUp.size() / 3);
   glDisableVertexAttribArray(locPos);
   glDisableVertexAttribArray(locUV);
 
@@ -495,7 +668,7 @@ void drawRail() {
   glDisableVertexAttribArray(locUV);
 }
 
-void updateCamera() {
+void UpdateCamera() {
   if (countPoint == 0 && waitingCamera <= waitingCameraMax) {
     waitingCamera++;
     matLookat[0] = posSpline[0] + scaleCameraN * NSpline[0];
@@ -532,14 +705,13 @@ void updateCamera() {
   }
 }
 
-
 void displayFunc() {
   // 1. Clear the display and bind VAO and VBO, set data to VBO
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Camera
-  if (updateCameraMode)
-    updateCamera();
+  if (UpdateCameraMode)
+    UpdateCamera();
 
   // 2. Set matrix transformation
   glMatrix->SetMatrixMode(OpenGLMatrix::ModelView); 
@@ -564,6 +736,7 @@ void displayFunc() {
   drawGround();
   drawSky();
   //drawSpline();
+  drawCube();
   drawRail();
 
   bindTexture(GL_TEXTURE1, textureGroundID);
@@ -577,9 +750,10 @@ void displayFunc() {
   glutSwapBuffers();
 }
 
-/////////////////////////////////////
-////////////// Reshape //////////////
-/////////////////////////////////////
+
+////////////////////////////////////////////
+////////////// RESHAPE & IDLE //////////////
+////////////////////////////////////////////
 /* Modify the parameter in head file
  * matPerspective: Perspective parameter
  */
@@ -592,7 +766,6 @@ void reshapeFunc(int w, int h) {
 }
 
 /* save the screen shot if saveMode == 1 */
-
 void idleFunc() {
   if (saveMode == 1) {
     char fName[] = 
@@ -614,13 +787,20 @@ void saveScreenshot(const char * filename)
 
   ImageIO screenshotImg(windowWidth, windowHeight, 3, screenshotData);
 
-  if (screenshotImg.save(filename, ImageIO::FORMAT_JPEG) == ImageIO::OK)
-    cout << "File " << filename << " saved successfully." << endl;
-  else cout << "Failed to save file " << filename << '.' << endl;
+  if (screenshotImg.save(filename, ImageIO::FORMAT_JPEG) == ImageIO::OK){
+    //cout << "File " << filename << " saved successfully." << endl;
+  } 
+  else {
+    cout << "Failed to save file " << filename << '.' << endl;
+  }
 
   delete [] screenshotData;
 }
 
+
+////////////////////////////////////////////////////
+////////////// HELPER FUNCTIONS GIVEN //////////////
+////////////////////////////////////////////////////
 void mouseMotionDragFunc(int x, int y)
 {
   // mouse has moved and one of the mouse buttons is pressed (dragging)
@@ -852,7 +1032,7 @@ int initTexture(const char * imageFilename, GLuint textureHandle)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  // query support for anisotropic texture filtering
+  // query sDownport for anisotropic texture filtering
   GLfloat fLargest;
   glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest);
   printf("Max available anisotropic samples: %f\n", fLargest);
