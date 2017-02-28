@@ -1,7 +1,6 @@
 Subject 	: CSCI420 - Computer Graphics 
 Assignment 2: Simulating a Roller Coaster
 Author		: Meiyi Yang
-USC ID 		: 6761040585
 
 Description: In this assignment, we use Catmull-Rom splines along with OpenGL texture mapping to create a roller coaster simulation.
 
